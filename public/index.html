@@ -17,7 +17,7 @@
 <meta property="og:title" content="PrezzoFuel | Taglia i costi del pieno all'istante" />
 <meta property="og:description" content="Scopri i distributori di carburante meno cari nella tua zona e calcola il tuo risparmio. Dati MIMIT aggiornati." />
 <meta property="og:type" content="website" />
-<meta property="og:image" content="https://iltuosito.it/assets/images/social-preview.jpg" /> ```
+<meta property="og:image" content="https://iltuosito.it/assets/images/social-preview.jpg" />
   
   <style>
     :root {
@@ -250,7 +250,7 @@
     }
     .map:hover { background: var(--accent); color: #000; }
 
-    footer { margin-top: 2rem; text-align: center; color: var(--muted); font-size: 1rem; line-height: 1.5; padding-bottom: 20px; }
+    footer { margin-top: 6rem; text-align: center; color: var(--muted); font-size: .75rem; line-height: 1.5; padding-bottom: 20px; }
 
 .seo-cities-wrapper {
       margin-top: 32px;
@@ -365,12 +365,8 @@
 
     <footer>
       PrezzoFuel · Dati trasparenti dal Ministero delle Imprese e del Made in Italy
-      <br><small style="color: #64748b;">*Il risparmio calcolato si basa su un pieno ipotetico di 50 litri (o 50kg per il Metano) rispetto al prezzo più alto rilevato in questa ricerca.</small>
-      <div class="social-proof">
-        <div class="avatars"><span></span><span></span><span></span></div>
-        Unisciti a chi non regala soldi ai petrolieri
-      </div>
-
+      <br>*Il risparmio calcolato si basa su un pieno ipotetico di 50 litri (o 50kg per il Metano) rispetto al prezzo più alto rilevato in questa ricerca.
+      
 <div class="seo-cities-wrapper">
         <div class="seo-cities-title">Scopri i prezzi nelle principali città</div>
         <div class="seo-cities">
@@ -936,24 +932,47 @@ function parseItalianDateTime(input) {
     }
   }
 
-  // --- INIZIO NUOVO CODICE SEO / LETTURA URL ---
+  // --- INIZIO NUOVO CODICE SEO / LETTURA URL + H1 DINAMICO ---
   
-  // Controlliamo se c'è un parametro ?cap= nell'URL
+  // Dizionario CAP -> Città (basato sui link del footer)
+  const capToCity = {
+    "60100": "Ancona", "52100": "Arezzo", "70100": "Bari", "24100": "Bergamo",
+    "40100": "Bologna", "39100": "Bolzano", "25100": "Brescia", "09100": "Cagliari",
+    "95100": "Catania", "44100": "Ferrara", "50100": "Firenze", "71100": "Foggia",
+    "16100": "Genova", "04100": "Latina", "73100": "Lecce", "57100": "Livorno",
+    "98100": "Messina", "20100": "Milano", "41100": "Modena", "20900": "Monza",
+    "80100": "Napoli", "28100": "Novara", "35100": "Padova", "90100": "Palermo",
+    "43100": "Parma", "06100": "Perugia", "65100": "Pescara", "29100": "Piacenza",
+    "59100": "Prato", "48100": "Ravenna", "89100": "Reggio Calabria", "42100": "Reggio Emilia",
+    "00100": "Roma", "84100": "Salerno", "07100": "Sassari", "96100": "Siracusa",
+    "74100": "Taranto", "05100": "Terni", "10100": "Torino", "38100": "Trento",
+    "34100": "Trieste", "33100": "Udine", "30100": "Venezia", "37100": "Verona",
+    "36100": "Vicenza"
+  };
+
   const urlParams = new URLSearchParams(window.location.search);
   const capParam = urlParams.get('cap');
 
   if (capParam && /^\d{5}$/.test(capParam)) {
-    // Se c'è un CAP valido nell'URL, lo inseriamo nel campo...
     el.cap.value = capParam;
+    
+    // --- MAGIA SEO: Cambia H1 e Title se riconosciamo la città ---
+    const cityName = capToCity[capParam];
+    if (cityName) {
+      const h1El = document.querySelector('h1');
+      // Aggiorna l'H1 mantenendo il design su due righe
+      h1El.innerHTML = `Prezzi carburante a ${cityName}.<br>Taglia i costi del pieno.`;
+      
+      // Aggiorna il titolo della scheda del browser (Super importante per Google!)
+      document.title = `Prezzi Benzina e Diesel a ${cityName} | PrezzoFuel`;
+    }
+
     showEmpty(`Ricerca automatica dei prezzi per il CAP ${escapeHtml(capParam)} in corso...`);
     
-    // ...e facciamo partire automaticamente la ricerca!
-    // Usiamo un piccolo timeout per assicurarci che l'UI sia pronta
     setTimeout(() => {
       searchByCap();
     }, 100);
   } else {
-    // Se non c'è nessun parametro, mostriamo il messaggio di benvenuto classico
     showEmpty("💸 Inizia a risparmiare: inserisci il tuo CAP o usa la posizione esatta!");
   }
   
