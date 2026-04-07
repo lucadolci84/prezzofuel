@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PrezzoFuel | Risparmia sul Pieno</title>
-
+  <meta name="description" content="Trova in tempo reale i distributori di Benzina, Diesel, GPL e Metano più economici vicino a te. Dati ufficiali del Ministero aggiornati per farti risparmiare sul pieno." />
+  
 <link rel="icon" type="image/png" href="/assets/icons/favicon-96x96.png" sizes="96x96" />
 <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg" />
 <link rel="shortcut icon" href="/assets/icons/favicon.ico" />
@@ -12,6 +13,11 @@
 <meta name="apple-mobile-web-app-title" content="PrezzoFuel" />
 <link rel="manifest" href="/assets/icons/site.webmanifest" />
   <meta name="theme-color" content="#0b0d10" />
+
+<meta property="og:title" content="PrezzoFuel | Taglia i costi del pieno all'istante" />
+<meta property="og:description" content="Scopri i distributori di carburante meno cari nella tua zona e calcola il tuo risparmio. Dati MIMIT aggiornati." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="https://iltuosito.it/assets/images/social-preview.jpg" /> ```
   
   <style>
     :root {
@@ -71,7 +77,7 @@
       background: linear-gradient(to right, #ffffff, #9ca3af); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
 
-    .subtitle { margin: 16px auto 0; max-width: 580px; color: var(--muted); line-height: 1.6; font-size: 1.1rem; }
+    .subtitle { margin: 2rem auto; max-width: 580px; color: var(--muted); line-height: 1.6; font-size: 1.1rem; }
 
     .panel {
       background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
@@ -244,7 +250,42 @@
     }
     .map:hover { background: var(--accent); color: #000; }
 
-    footer { margin-top: 40px; text-align: center; color: var(--muted); font-size: .9rem; line-height: 1.5; padding-bottom: 20px; }
+    footer { margin-top: 2rem; text-align: center; color: var(--muted); font-size: 1rem; line-height: 1.5; padding-bottom: 20px; }
+
+.seo-cities-wrapper {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .seo-cities-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #475569; /* Colore molto scuro e discreto */
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+    }
+
+    .seo-cities {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px 16px; /* Spazio tra le parole */
+    }
+
+    .seo-cities a {
+      color: #64748b; /* Grigio tenue */
+      font-size: 0.75rem;
+      text-decoration: none;
+      white-space: nowrap; /* Evita che il nome di una città si spezzi su due righe */
+      transition: color 0.2s ease;
+    }
+
+    .seo-cities a:hover {
+      color: var(--accent); /* Si illumina di azzurro al passaggio del mouse */
+    }
+    
     .social-proof { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; font-size: 0.85rem; font-weight: 600; color: #64748b; }
     .avatars { display: flex; }
     .avatars span { width: 24px; height: 24px; border-radius: 50%; background: var(--line); border: 2px solid var(--bg); display: inline-block; margin-left: -8px; }
@@ -270,8 +311,8 @@
   </header>
   <div class="wrap">
     <section class="hero">
-      <div class="eyebrow">💰 Inizia a risparmiare</div>
-      <h1>Taglia i costi del pieno.<br>All'istante.</h1>
+      <div class="eyebrow">Inizia a risparmiare</div>
+      <h1>Prezzi Benzina e Diesel. <br>Taglia i costi del pieno.</h1>
       <div class="subtitle">
         Trova i distributori più economici intorno a te in un click. Dati ufficiali MIMIT aggiornati in tempo reale per garantirti sempre l'affare migliore.
       </div>
@@ -329,6 +370,58 @@
         <div class="avatars"><span></span><span></span><span></span></div>
         Unisciti a chi non regala soldi ai petrolieri
       </div>
+
+<div class="seo-cities-wrapper">
+        <div class="seo-cities-title">Scopri i prezzi nelle principali città</div>
+        <div class="seo-cities">
+          <a href="/?cap=60100">Ancona</a>
+          <a href="/?cap=52100">Arezzo</a>
+          <a href="/?cap=70100">Bari</a>
+          <a href="/?cap=24100">Bergamo</a>
+          <a href="/?cap=40100">Bologna</a>
+          <a href="/?cap=39100">Bolzano</a>
+          <a href="/?cap=25100">Brescia</a>
+          <a href="/?cap=09100">Cagliari</a>
+          <a href="/?cap=95100">Catania</a>
+          <a href="/?cap=44100">Ferrara</a>
+          <a href="/?cap=50100">Firenze</a>
+          <a href="/?cap=71100">Foggia</a>
+          <a href="/?cap=16100">Genova</a>
+          <a href="/?cap=04100">Latina</a>
+          <a href="/?cap=73100">Lecce</a>
+          <a href="/?cap=57100">Livorno</a>
+          <a href="/?cap=98100">Messina</a>
+          <a href="/?cap=20100">Milano</a>
+          <a href="/?cap=41100">Modena</a>
+          <a href="/?cap=20900">Monza</a>
+          <a href="/?cap=80100">Napoli</a>
+          <a href="/?cap=28100">Novara</a>
+          <a href="/?cap=35100">Padova</a>
+          <a href="/?cap=90100">Palermo</a>
+          <a href="/?cap=43100">Parma</a>
+          <a href="/?cap=06100">Perugia</a>
+          <a href="/?cap=65100">Pescara</a>
+          <a href="/?cap=29100">Piacenza</a>
+          <a href="/?cap=59100">Prato</a>
+          <a href="/?cap=48100">Ravenna</a>
+          <a href="/?cap=89100">Reggio Calabria</a>
+          <a href="/?cap=42100">Reggio Emilia</a>
+          <a href="/?cap=00100">Roma</a>
+          <a href="/?cap=84100">Salerno</a>
+          <a href="/?cap=07100">Sassari</a>
+          <a href="/?cap=96100">Siracusa</a>
+          <a href="/?cap=74100">Taranto</a>
+          <a href="/?cap=05100">Terni</a>
+          <a href="/?cap=10100">Torino</a>
+          <a href="/?cap=38100">Trento</a>
+          <a href="/?cap=34100">Trieste</a>
+          <a href="/?cap=33100">Udine</a>
+          <a href="/?cap=30100">Venezia</a>
+          <a href="/?cap=37100">Verona</a>
+          <a href="/?cap=36100">Vicenza</a>
+        </div>
+      </div>
+      
     </footer>
   </div>
 
@@ -843,7 +936,28 @@ function parseItalianDateTime(input) {
     }
   }
 
-  showEmpty("💸 Inizia a risparmiare: inserisci il tuo CAP o usa la posizione esatta!");
+  // --- INIZIO NUOVO CODICE SEO / LETTURA URL ---
+  
+  // Controlliamo se c'è un parametro ?cap= nell'URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const capParam = urlParams.get('cap');
+
+  if (capParam && /^\d{5}$/.test(capParam)) {
+    // Se c'è un CAP valido nell'URL, lo inseriamo nel campo...
+    el.cap.value = capParam;
+    showEmpty(`Ricerca automatica dei prezzi per il CAP ${escapeHtml(capParam)} in corso...`);
+    
+    // ...e facciamo partire automaticamente la ricerca!
+    // Usiamo un piccolo timeout per assicurarci che l'UI sia pronta
+    setTimeout(() => {
+      searchByCap();
+    }, 100);
+  } else {
+    // Se non c'è nessun parametro, mostriamo il messaggio di benvenuto classico
+    showEmpty("💸 Inizia a risparmiare: inserisci il tuo CAP o usa la posizione esatta!");
+  }
+  
+  // --- FINE NUOVO CODICE SEO ---
 })();
 </script>
 </body>
