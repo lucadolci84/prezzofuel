@@ -217,6 +217,10 @@
       .sortbar { flex-direction: column; align-items: stretch; }
       .actions { flex-direction: column; }
     }
+
+    .chip span:last-child {
+  white-space: nowrap;
+}
   </style>
 </head>
 <body>
@@ -336,13 +340,13 @@
   }
 
   function escapeHtml(value) {
-    return String(value ?? "")
-      .replace(/&/g, "&")
-      .replace(/</g, "<")
-      .replace(/>/g, ">")
-      .replace(/"/g, "\"")
-      .replace(/'/g, "'");
-  }
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
   function setStatus(message, loading = false) {
     if (!message) {
@@ -374,9 +378,20 @@
     return Math.min(...station.priceList.map(p => p.prezzo));
   }
 
-  function latestPriceDate(station) {
-    return Math.max(...station.priceList.map(p => Date.parse(p.dt) || 0));
+function parseItalianDateTime(input) {
+  if (!input) return 0;
+  const s = String(input).trim().replace(",", "");
+  if (s.includes("/")) {
+    const [date, time = "00:00:00"] = s.split(" ");
+    const [d, m, y] = date.split("/");
+    return new Date(`${y}-${m}-${d}T${time}`).getTime() || 0;
   }
+  return new Date(s).getTime() || 0;
+}
+  
+  function latestPriceDate(station) {
+  return Math.max(...station.priceList.map(p => parseItalianDateTime(p.dt)));
+}
 
   async function safeFetchJson(url, label = "servizio") {
     let response;
@@ -466,7 +481,7 @@
 
       const stationTitle = s.flag || s.nome || "Impianto";
       const fullAddr = [s.indirizzo, `${s.comune} (${s.prov})`].filter(Boolean).join(" — ");
-      const latest = Math.max(...s.priceList.map(p => Date.parse(p.dt) || 0));
+      const latest = Math.max(...s.priceList.map(p => parseItalianDateTime(p.dt)));
       const fresh = latest && (Date.now() - latest < 172800000);
 
       let bestSavingsForThisStation = 0;
