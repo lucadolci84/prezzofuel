@@ -389,6 +389,22 @@
       opacity: 0.8;
     }
 
+    /* NUOVO: Badge del risparmio calcolato */
+    .savings-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      padding: 8px 14px;
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-radius: 10px;
+      color: #4ade80;
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
     .right {
       text-align: right;
       min-width: 120px;
@@ -448,10 +464,7 @@
       color: #64748b;
     }
 
-    .avatars {
-      display: flex;
-    }
-
+    .avatars { display: flex; }
     .avatars span {
       width: 24px; height: 24px; border-radius: 50%;
       background: var(--line); border: 2px solid var(--bg);
@@ -522,6 +535,7 @@
 
     <footer>
       PrezzoFuel · Dati trasparenti dal Ministero delle Imprese e del Made in Italy
+      <br><small style="color: #64748b;">*Il risparmio calcolato si basa su un pieno ipotetico di 50 litri (o 50kg per il Metano) rispetto al prezzo più alto rilevato in questa ricerca.</small>
       <div class="social-proof">
         <div class="avatars"><span></span><span></span><span></span></div>
         Unisciti a chi non regala soldi ai petrolieri
@@ -685,11 +699,13 @@
 
     const sort = el.sortSelect.value;
     const minByType = {};
+    const maxByType = {}; // NUOVO: Traccia i prezzi massimi per il calcolo del risparmio
 
     for (const s of state.risultati) {
       for (const p of s.priceList) {
         const key = `${p.tipo}_${p.self ? "self" : "servito"}`;
         if (minByType[key] == null || p.prezzo < minByType[key]) minByType[key] = p.prezzo;
+        if (maxByType[key] == null || p.prezzo > maxByType[key]) maxByType[key] = p.prezzo;
       }
     }
 
@@ -702,12 +718,16 @@
     el.sortBar.style.display = "flex";
     el.countBadge.innerHTML = `Trovate <strong>${sorted.length} stazioni</strong> in zona`;
 
+    const TANK_CAPACITY = 50; // Calcolo basato su serbatoio 50 litri
+
     el.results.innerHTML = sorted.map((s, idx) => {
       const isBestStation = bestPrice(s) === overallBest && idx === 0 && sort === "price";
       const stationTitle = s.flag || s.nome || "Impianto";
       const fullAddr = [s.indirizzo, `${s.comune} (${s.prov})`].filter(Boolean).join(" — ");
       const latest = Math.max(...s.priceList.map(p => Date.parse(p.dt) || 0));
       const fresh = latest && (Date.now() - latest < 172800000);
+
+      let bestSavingsForThisStation = 0;
 
       const chips = s.priceList
         .slice()
@@ -716,8 +736,20 @@
           const key = `${p.tipo}_${p.self ? "self" : "servito"}`;
           const cls = minByType[key] === p.prezzo ? (fuelColors[p.tipo] || "green") : "";
           const measure = p.tipo === "metano" ? "€/kg" : "€/L";
+          
+          // NUOVO: Calcolo il risparmio rispetto al peggior prezzo in zona
+          const maxPrice = maxByType[key];
+          const savings = (maxPrice - p.prezzo) * TANK_CAPACITY;
+          if (savings > bestSavingsForThisStation) bestSavingsForThisStation = savings;
+
           return `<div class="chip ${cls}"><span class="val">${p.prezzo.toFixed(3)}</span><span>${escapeHtml(fuelLabels[p.tipo] || p.tipo)}${p.self ? " Self" : ""} ${measure}</span></div>`;
         }).join("");
+
+      // Se il risparmio supera i 2€ mostriamo il badge
+      let savingsHtml = "";
+      if (bestSavingsForThisStation > 2) {
+        savingsHtml = `<div class="savings-badge">💸 Risparmi fino a ${bestSavingsForThisStation.toFixed(2)}€ sul pieno*</div>`;
+      }
 
       return `
         <div class="card ${isBestStation ? "best" : ""}">
@@ -725,6 +757,7 @@
             <div class="name">${escapeHtml(stationTitle)} ${isBestStation ? '<span class="pill">🔥 Super Prezzo</span>' : ''}</div>
             <div class="addr">${escapeHtml(fullAddr)}</div>
             <div class="prices">${chips}</div>
+            ${savingsHtml}
             <div class="meta">${fresh ? "🟢 Aggiornato di recente" : "🟠 Aggiornamento meno recente"}${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT", {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})) : ""}</div>
           </div>
           <div class="right">
