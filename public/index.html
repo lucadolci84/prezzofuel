@@ -306,12 +306,12 @@
       overflow: hidden;
     }
 
-    .card.best::before {
+    /*.card.best::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0; height: 4px;
       background: var(--green);
-    }
+    }*/
 
     .name {
       font-size: 1.2rem;
@@ -728,6 +728,7 @@
       const fresh = latest && (Date.now() - latest < 172800000);
 
       let bestSavingsForThisStation = 0;
+      let fuelWithBestSavings = ""; // NUOVO: Memorizziamo quale carburante ci fa risparmiare di più
 
       const chips = s.priceList
         .slice()
@@ -737,18 +738,22 @@
           const cls = minByType[key] === p.prezzo ? (fuelColors[p.tipo] || "green") : "";
           const measure = p.tipo === "metano" ? "€/kg" : "€/L";
           
-          // NUOVO: Calcolo il risparmio rispetto al peggior prezzo in zona
           const maxPrice = maxByType[key];
           const savings = (maxPrice - p.prezzo) * TANK_CAPACITY;
-          if (savings > bestSavingsForThisStation) bestSavingsForThisStation = savings;
+          
+          // NUOVO: Se troviamo un risparmio maggiore, salviamo anche il TIPO di carburante
+          if (savings > bestSavingsForThisStation) {
+            bestSavingsForThisStation = savings;
+            fuelWithBestSavings = fuelLabels[p.tipo] || p.tipo; 
+          }
 
           return `<div class="chip ${cls}"><span class="val">${p.prezzo.toFixed(3)}</span><span>${escapeHtml(fuelLabels[p.tipo] || p.tipo)}${p.self ? " Self" : ""} ${measure}</span></div>`;
         }).join("");
 
-      // Se il risparmio supera i 2€ mostriamo il badge
+      // Modifichiamo il testo del badge per includere il nome del carburante!
       let savingsHtml = "";
       if (bestSavingsForThisStation > 2) {
-        savingsHtml = `<div class="savings-badge">💸 Risparmi fino a ${bestSavingsForThisStation.toFixed(2)}€ sul pieno*</div>`;
+        savingsHtml = `<div class="savings-badge">💸 Risparmi fino a ${bestSavingsForThisStation.toFixed(2)}€ sul pieno di <strong>${escapeHtml(fuelWithBestSavings)}</strong>*</div>`;
       }
 
       return `
