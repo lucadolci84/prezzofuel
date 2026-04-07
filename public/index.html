@@ -672,7 +672,7 @@ function parseItalianDateTime(input) {
     if (savingsInfo && !isWorstStation) {
       badgesHtml += `
         <div class="savings-badge">
-          Risparmi fino a ${savingsInfo.amount.toFixed(2)}€ sul pieno di <strong>${escapeHtml(savingsInfo.fuelLabel)}</strong>*
+          Risparmi fino a ${savingsInfo.amount.toFixed(2)}€ sul pieno di ${escapeHtml(savingsInfo.fuelLabel)}*
         </div>
       `;
     }
