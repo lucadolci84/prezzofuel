@@ -266,9 +266,13 @@
       <div class="count" id="countBadge"></div>
       <div style="width: 200px;">
         <select id="sortSelect">
-          <option value="price">Ordina per Prezzo</option>
-          <option value="dist">Ordina per Distanza</option>
-          <option value="updated">Più Recenti</option>
+          <option value="best">Prezzo migliore assoluto</option>
+  <option value="benzina">Prezzo Benzina</option>
+  <option value="diesel">Prezzo Diesel</option>
+  <option value="gpl">Prezzo GPL</option>
+  <option value="metano">Prezzo Metano</option>
+  <option value="dist">Distanza</option>
+  <option value="updated">Aggiornamento più recente</option>
         </select>
       </div>
     </div>
@@ -379,6 +383,12 @@
     return Math.min(...station.priceList.map(p => p.prezzo));
   }
 
+  function fuelPrice(station, fuelType) {
+  const matches = station.priceList.filter(p => p.tipo === fuelType);
+  if (!matches.length) return Number.POSITIVE_INFINITY;
+  return Math.min(...matches.map(p => p.prezzo));
+}
+
 function parseItalianDateTime(input) {
   if (!input) return 0;
   const s = String(input).trim().replace(",", "");
@@ -463,20 +473,71 @@ function parseItalianDateTime(input) {
     }
 
     const sorted = [...state.risultati];
-    if (sort === "price") sorted.sort((a, b) => bestPrice(a) - bestPrice(b));
-    if (sort === "dist") sorted.sort((a, b) => a.dist - b.dist);
-    if (sort === "updated") sorted.sort((a, b) => latestPriceDate(b) - latestPriceDate(a));
+
+if (sort === "best") {
+  sorted.sort((a, b) => bestPrice(a) - bestPrice(b));
+}
+
+if (sort === "benzina") {
+  sorted.sort((a, b) => fuelPrice(a, "benzina") - fuelPrice(b, "benzina"));
+}
+
+if (sort === "diesel") {
+  sorted.sort((a, b) => fuelPrice(a, "diesel") - fuelPrice(b, "diesel"));
+}
+
+if (sort === "gpl") {
+  sorted.sort((a, b) => fuelPrice(a, "gpl") - fuelPrice(b, "gpl"));
+}
+
+if (sort === "metano") {
+  sorted.sort((a, b) => fuelPrice(a, "metano") - fuelPrice(b, "metano"));
+}
+
+if (sort === "dist") {
+  sorted.sort((a, b) => a.dist - b.dist);
+}
+
+if (sort === "updated") {
+  sorted.sort((a, b) => latestPriceDate(b) - latestPriceDate(a));
+}
 
     const overallBest = Math.min(...sorted.map(bestPrice));
     
     el.sortBar.style.display = "flex";
-    el.countBadge.innerHTML = `Trovate <strong>${sorted.length} stazioni</strong> in zona`;
+    const sortLabels = {
+  best: "ordinate per miglior prezzo assoluto",
+  benzina: "ordinate per prezzo Benzina",
+  diesel: "ordinate per prezzo Diesel",
+  gpl: "ordinate per prezzo GPL",
+  metano: "ordinate per prezzo Metano",
+  dist: "ordinate per distanza",
+  updated: "ordinate per aggiornamento"
+};
+
+el.countBadge.innerHTML = `Trovate <strong>${sorted.length} stazioni</strong> in zona · ${sortLabels[sort] || ""}`;
 
     const TANK_CAPACITY = 50; 
 
     el.results.innerHTML = sorted.map((s, idx) => {
       // La stazione migliore (solo se si ordina per prezzo)
-      const isBestStation = bestPrice(s) === overallBest && idx === 0 && sort === "price";
+      let isBestStation = false;
+
+if (sort === "best") {
+  isBestStation = bestPrice(s) === bestPrice(sorted[0]) && idx === 0;
+}
+if (sort === "benzina") {
+  isBestStation = fuelPrice(s, "benzina") === fuelPrice(sorted[0], "benzina") && idx === 0;
+}
+if (sort === "diesel") {
+  isBestStation = fuelPrice(s, "diesel") === fuelPrice(sorted[0], "diesel") && idx === 0;
+}
+if (sort === "gpl") {
+  isBestStation = fuelPrice(s, "gpl") === fuelPrice(sorted[0], "gpl") && idx === 0;
+}
+if (sort === "metano") {
+  isBestStation = fuelPrice(s, "metano") === fuelPrice(sorted[0], "metano") && idx === 0;
+}
       // La stazione peggiore: l'ultima della lista (se ci sono almeno 2 risultati e si ordina per prezzo)
       const isWorstStation = idx === sorted.length - 1 && sort === "price" && sorted.length > 1;
 
