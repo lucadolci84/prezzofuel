@@ -389,6 +389,56 @@
   return Math.min(...matches.map(p => p.prezzo));
 }
 
+  function getSelectedSortFuel(sort) {
+  if (sort === "benzina") return "benzina";
+  if (sort === "diesel") return "diesel";
+  if (sort === "gpl") return "gpl";
+  if (sort === "metano") return "metano";
+  return null;
+}
+
+  function getSavingsInfo(station, sort, minByType, maxByType) {
+  const selectedFuel = getSelectedSortFuel(sort);
+
+  if (selectedFuel) {
+    const candidates = station.priceList.filter(p => p.tipo === selectedFuel);
+    if (!candidates.length) return null;
+
+    const bestForFuel = candidates.reduce((min, p) => p.prezzo < min.prezzo ? p : min, candidates[0]);
+    const key = `${bestForFuel.tipo}_${bestForFuel.self ? "self" : "servito"}`;
+    const maxPrice = maxByType[key];
+    const savings = (maxPrice - bestForFuel.prezzo) * 50;
+
+    if (savings <= 2) return null;
+
+    return {
+      amount: savings,
+      fuelLabel: fuelLabels[bestForFuel.tipo] || bestForFuel.tipo
+    };
+  }
+
+  let bestSavings = 0;
+  let bestFuelLabel = "";
+
+  for (const p of station.priceList) {
+    const key = `${p.tipo}_${p.self ? "self" : "servito"}`;
+    const maxPrice = maxByType[key];
+    const savings = (maxPrice - p.prezzo) * 50;
+
+    if (savings > bestSavings) {
+      bestSavings = savings;
+      bestFuelLabel = fuelLabels[p.tipo] || p.tipo;
+    }
+  }
+
+  if (bestSavings <= 2) return null;
+
+  return {
+    amount: bestSavings,
+    fuelLabel: bestFuelLabel
+  };
+}
+
 function parseItalianDateTime(input) {
   if (!input) return 0;
   const s = String(input).trim().replace(",", "");
@@ -455,155 +505,196 @@ function parseItalianDateTime(input) {
   }
 
   function renderResults() {
-    if (!state.risultati.length) {
-      showEmpty("Nessun risultato disponibile.");
-      return;
+  if (!state.risultati.length) {
+    showEmpty("Nessun risultato disponibile.");
+    return;
+  }
+
+  const sort = el.sortSelect.value;
+  const minByType = {};
+  const maxByType = {};
+
+  for (const s of state.risultati) {
+    for (const p of s.priceList) {
+      const key = `${p.tipo}_${p.self ? "self" : "servito"}`;
+      if (minByType[key] == null || p.prezzo < minByType[key]) {
+        minByType[key] = p.prezzo;
+      }
+      if (maxByType[key] == null || p.prezzo > maxByType[key]) {
+        maxByType[key] = p.prezzo;
+      }
+    }
+  }
+
+  const sorted = [...state.risultati];
+
+  if (sort === "best") {
+    sorted.sort((a, b) => bestPrice(a) - bestPrice(b));
+  } else if (sort === "benzina") {
+    sorted.sort((a, b) => fuelPrice(a, "benzina") - fuelPrice(b, "benzina"));
+  } else if (sort === "diesel") {
+    sorted.sort((a, b) => fuelPrice(a, "diesel") - fuelPrice(b, "diesel"));
+  } else if (sort === "gpl") {
+    sorted.sort((a, b) => fuelPrice(a, "gpl") - fuelPrice(b, "gpl"));
+  } else if (sort === "metano") {
+    sorted.sort((a, b) => fuelPrice(a, "metano") - fuelPrice(b, "metano"));
+  } else if (sort === "dist") {
+    sorted.sort((a, b) => a.dist - b.dist);
+  } else if (sort === "updated") {
+    sorted.sort((a, b) => latestPriceDate(b) - latestPriceDate(a));
+  }
+
+  const sortLabels = {
+    best: "miglior prezzo assoluto",
+    benzina: "prezzo Benzina",
+    diesel: "prezzo Diesel",
+    gpl: "prezzo GPL",
+    metano: "prezzo Metano",
+    dist: "distanza",
+    updated: "aggiornamento"
+  };
+
+  el.sortBar.style.display = "flex";
+  el.countBadge.innerHTML =
+    `Trovate <strong>${sorted.length} stazioni</strong> in zona · ordinate per <strong>${sortLabels[sort] || sort}</strong>`;
+
+  const selectedSortFuel = getSelectedSortFuel(sort);
+  const TANK_CAPACITY = 50;
+
+  el.results.innerHTML = sorted.map((s, idx) => {
+    let isBestStation = false;
+    let isWorstStation = false;
+
+    if (sort === "best") {
+      isBestStation = idx === 0;
+      isWorstStation = sorted.length > 1 && idx === sorted.length - 1;
+    } else if (sort === "benzina" || sort === "diesel" || sort === "gpl" || sort === "metano") {
+      isBestStation = idx === 0 && Number.isFinite(fuelPrice(s, sort));
+      isWorstStation = false;
+    } else if (sort === "dist" || sort === "updated") {
+      isBestStation = false;
+      isWorstStation = false;
     }
 
-    const sort = el.sortSelect.value;
-    const minByType = {};
-    const maxByType = {};
+    const stationTitle = s.flag || s.nome || "Impianto";
+    const fullAddr = [s.indirizzo, `${s.comune} (${s.prov})`].filter(Boolean).join(" — ");
+    const latest = Math.max(...s.priceList.map(p => parseItalianDateTime(p.dt)));
+    const fresh = latest && (Date.now() - latest < 172800000);
 
-    for (const s of state.risultati) {
+    let savingsInfo = null;
+
+    if (selectedSortFuel) {
+      const fuelEntries = s.priceList.filter(p => p.tipo === selectedSortFuel);
+      if (fuelEntries.length) {
+        const bestFuelEntry = fuelEntries.reduce((min, p) => p.prezzo < min.prezzo ? p : min, fuelEntries[0]);
+        const key = `${bestFuelEntry.tipo}_${bestFuelEntry.self ? "self" : "servito"}`;
+        const maxPrice = maxByType[key];
+        const savings = (maxPrice - bestFuelEntry.prezzo) * TANK_CAPACITY;
+
+        if (savings > 2) {
+          savingsInfo = {
+            amount: savings,
+            fuelLabel: fuelLabels[bestFuelEntry.tipo] || bestFuelEntry.tipo
+          };
+        }
+      }
+    } else if (sort === "best") {
+      let bestSavingsForThisStation = 0;
+      let fuelWithBestSavings = "";
+
       for (const p of s.priceList) {
         const key = `${p.tipo}_${p.self ? "self" : "servito"}`;
-        if (minByType[key] == null || p.prezzo < minByType[key]) minByType[key] = p.prezzo;
-        if (maxByType[key] == null || p.prezzo > maxByType[key]) maxByType[key] = p.prezzo;
+        const maxPrice = maxByType[key];
+        const savings = (maxPrice - p.prezzo) * TANK_CAPACITY;
+
+        if (savings > bestSavingsForThisStation) {
+          bestSavingsForThisStation = savings;
+          fuelWithBestSavings = fuelLabels[p.tipo] || p.tipo;
+        }
+      }
+
+      if (bestSavingsForThisStation > 2) {
+        savingsInfo = {
+          amount: bestSavingsForThisStation,
+          fuelLabel: fuelWithBestSavings
+        };
       }
     }
 
-    const sorted = [...state.risultati];
+    const chips = s.priceList
+      .slice()
+      .sort((a, b) => a.prezzo - b.prezzo)
+      .map(p => {
+        const key = `${p.tipo}_${p.self ? "self" : "servito"}`;
+        const minPrice = minByType[key];
+        const maxPrice = maxByType[key];
 
-if (sort === "best") {
-  sorted.sort((a, b) => bestPrice(a) - bestPrice(b));
-}
+        let cls = "";
+        if (p.prezzo === minPrice) {
+          cls = fuelColors[p.tipo] || "green";
+        } else if (p.prezzo === maxPrice && p.prezzo > minPrice) {
+          cls = "danger";
+        }
 
-if (sort === "benzina") {
-  sorted.sort((a, b) => fuelPrice(a, "benzina") - fuelPrice(b, "benzina"));
-}
+        const measure = p.tipo === "metano" ? "€/kg" : "€/L";
 
-if (sort === "diesel") {
-  sorted.sort((a, b) => fuelPrice(a, "diesel") - fuelPrice(b, "diesel"));
-}
-
-if (sort === "gpl") {
-  sorted.sort((a, b) => fuelPrice(a, "gpl") - fuelPrice(b, "gpl"));
-}
-
-if (sort === "metano") {
-  sorted.sort((a, b) => fuelPrice(a, "metano") - fuelPrice(b, "metano"));
-}
-
-if (sort === "dist") {
-  sorted.sort((a, b) => a.dist - b.dist);
-}
-
-if (sort === "updated") {
-  sorted.sort((a, b) => latestPriceDate(b) - latestPriceDate(a));
-}
-
-    const overallBest = Math.min(...sorted.map(bestPrice));
-    
-    el.sortBar.style.display = "flex";
-    const sortLabels = {
-  best: "ordinate per miglior prezzo assoluto",
-  benzina: "ordinate per prezzo Benzina",
-  diesel: "ordinate per prezzo Diesel",
-  gpl: "ordinate per prezzo GPL",
-  metano: "ordinate per prezzo Metano",
-  dist: "ordinate per distanza",
-  updated: "ordinate per aggiornamento"
-};
-
-el.countBadge.innerHTML = `Trovate <strong>${sorted.length} stazioni</strong> in zona · ${sortLabels[sort] || ""}`;
-
-    const TANK_CAPACITY = 50; 
-
-    el.results.innerHTML = sorted.map((s, idx) => {
-      // La stazione migliore (solo se si ordina per prezzo)
-      let isBestStation = false;
-
-if (sort === "best") {
-  isBestStation = bestPrice(s) === bestPrice(sorted[0]) && idx === 0;
-}
-if (sort === "benzina") {
-  isBestStation = fuelPrice(s, "benzina") === fuelPrice(sorted[0], "benzina") && idx === 0;
-}
-if (sort === "diesel") {
-  isBestStation = fuelPrice(s, "diesel") === fuelPrice(sorted[0], "diesel") && idx === 0;
-}
-if (sort === "gpl") {
-  isBestStation = fuelPrice(s, "gpl") === fuelPrice(sorted[0], "gpl") && idx === 0;
-}
-if (sort === "metano") {
-  isBestStation = fuelPrice(s, "metano") === fuelPrice(sorted[0], "metano") && idx === 0;
-}
-      // La stazione peggiore: l'ultima della lista (se ci sono almeno 2 risultati e si ordina per prezzo)
-      const isWorstStation = idx === sorted.length - 1 && sort === "price" && sorted.length > 1;
-
-      const stationTitle = s.flag || s.nome || "Impianto";
-      const fullAddr = [s.indirizzo, `${s.comune} (${s.prov})`].filter(Boolean).join(" — ");
-      const latest = Math.max(...s.priceList.map(p => parseItalianDateTime(p.dt)));
-      const fresh = latest && (Date.now() - latest < 172800000);
-
-      let bestSavingsForThisStation = 0;
-      let fuelWithBestSavings = ""; 
-
-      const chips = s.priceList
-        .slice()
-        .sort((a, b) => a.prezzo - b.prezzo)
-        .map(p => {
-          const key = `${p.tipo}_${p.self ? "self" : "servito"}`;
-          const maxPrice = maxByType[key];
-          const minPrice = minByType[key];
-          
-          let cls = "";
-          if (p.prezzo === minPrice) {
-            cls = fuelColors[p.tipo] || "green";
-          } else if (p.prezzo === maxPrice && p.prezzo > minPrice) {
-            cls = "danger"; // Il prezzo singolo più caro si colora di rosso!
-          }
-
-          const measure = p.tipo === "metano" ? "€/kg" : "€/L";
-          const savings = (maxPrice - p.prezzo) * TANK_CAPACITY;
-          
-          if (savings > bestSavingsForThisStation) {
-            bestSavingsForThisStation = savings;
-            fuelWithBestSavings = fuelLabels[p.tipo] || p.tipo; 
-          }
-
-          return `<div class="chip ${cls}"><span class="val">${p.prezzo.toFixed(3)}</span><span>${escapeHtml(fuelLabels[p.tipo] || p.tipo)}${p.self ? " Self" : ""} ${measure}</span></div>`;
-        }).join("");
-
-      // Costruiamo i badge per la stazione (Verde per il risparmio, Rosso per il "Nemico")
-      let badgesHtml = '<div class="badges-container">';
-      
-      if (bestSavingsForThisStation > 2 && !isWorstStation) {
-        badgesHtml += `<div class="savings-badge">Risparmi fino a ${bestSavingsForThisStation.toFixed(2)}€ sul pieno di <strong>${escapeHtml(fuelWithBestSavings)}</strong>*</div>`;
-      }
-      if (isWorstStation) {
-        badgesHtml += `<div class="danger-badge">💀 Il più caro in zona</div>`;
-      }
-      
-      badgesHtml += '</div>';
-
-      return `
-        <div class="card ${isBestStation ? "best" : ""} ${isWorstStation ? "worst" : ""}">
-          <div>
-            <div class="name">${escapeHtml(stationTitle)} ${isBestStation ? '<span class="pill">🔥 Super Prezzo</span>' : ''}</div>
-            <div class="addr">${escapeHtml(fullAddr)}</div>
-            <div class="prices">${chips}</div>
-            ${badgesHtml}
-            <div class="meta">${fresh ? "🟢 Aggiornato di recente" : "🟠 Aggiornamento meno recente"}${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT", {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})) : ""}</div>
+        return `
+          <div class="chip ${cls}">
+            <span class="val">${p.prezzo.toFixed(3)}</span>
+            <span>${escapeHtml(fuelLabels[p.tipo] || p.tipo)}${p.self ? " Self" : ""} ${measure}</span>
           </div>
-          <div class="right">
-            <div class="dist">${s.dist.toFixed(1)} <span>km</span></div>
-            <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">Vai qui</a>
-          </div>
+        `;
+      }).join("");
+
+    let badgesHtml = '<div class="badges-container">';
+
+    if (savingsInfo && !isWorstStation) {
+      badgesHtml += `
+        <div class="savings-badge">
+          Risparmi fino a ${savingsInfo.amount.toFixed(2)}€ sul pieno di <strong>${escapeHtml(savingsInfo.fuelLabel)}</strong>*
         </div>
       `;
-    }).join("");
-  }
+    }
+
+    if (isWorstStation) {
+      badgesHtml += `<div class="danger-badge">💀 Il più caro in zona</div>`;
+    }
+
+    badgesHtml += "</div>";
+
+    return `
+      <div class="card ${isBestStation ? "best" : ""} ${isWorstStation ? "worst" : ""}">
+        <div>
+          <div class="name">
+            ${escapeHtml(stationTitle)}
+            ${isBestStation ? '<span class="pill">🔥 SUPER PREZZO</span>' : ""}
+          </div>
+
+          <div class="addr">${escapeHtml(fullAddr)}</div>
+
+          <div class="prices">${chips}</div>
+
+          ${badgesHtml}
+
+          <div class="meta">
+            ${fresh ? "🟢 Aggiornato di recente" : "🟠 Aggiornamento meno recente"}
+            ${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT", {
+              day: "2-digit",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit"
+            })) : ""}
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="dist">${s.dist.toFixed(1)} <span>km</span></div>
+          <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">Vai qui</a>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 
   async function searchByCap() {
     const cap = el.cap.value.trim();
