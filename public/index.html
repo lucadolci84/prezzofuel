@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PrezzoFuel</title>
+  <title>PrezzoFuel | Risparmia sul Pieno</title>
   <meta name="theme-color" content="#0b0d10" />
   <style>
     :root {
@@ -13,9 +13,10 @@
       --line: #242b33;
       --text: #eef2f7;
       --muted: #95a0ad;
-      --accent: #7dd3fc;
-      --accent-2: #60a5fa;
+      --accent: #38bdf8;
+      --accent-2: #2563eb;
       --green: #22c55e;
+      --green-glow: rgba(34, 197, 94, 0.4);
       --blue: #60a5fa;
       --amber: #f59e0b;
       --danger: #f87171;
@@ -29,9 +30,10 @@
       margin: 0;
       font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       background:
-        radial-gradient(circle at top center, rgba(96,165,250,.10), transparent 30%),
+        radial-gradient(circle at top center, rgba(56, 189, 248, 0.15), transparent 40%),
         linear-gradient(180deg, #0b0d10 0%, #0a0c0f 100%);
       color: var(--text);
+      min-height: 100vh;
     }
 
     .wrap {
@@ -41,52 +43,62 @@
     }
 
     .hero {
-      padding: 22px 0 18px;
+      padding: 32px 0 24px;
+      text-align: center;
     }
 
     .eyebrow {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.1);
       color: var(--accent);
-      font-size: .82rem;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: .85rem;
       text-transform: uppercase;
-      letter-spacing: .14em;
-      font-weight: 700;
-      margin-bottom: 12px;
+      letter-spacing: .1em;
+      font-weight: 800;
+      margin-bottom: 16px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(2rem, 5vw, 4rem);
-      line-height: .98;
-      letter-spacing: -.04em;
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      line-height: 1.1;
+      letter-spacing: -.03em;
+      background: linear-gradient(to right, #ffffff, #9ca3af);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .subtitle {
-      margin-top: 14px;
-      max-width: 620px;
+      margin: 16px auto 0;
+      max-width: 580px;
       color: var(--muted);
-      line-height: 1.55;
-      font-size: 1rem;
+      line-height: 1.6;
+      font-size: 1.1rem;
     }
 
     .panel {
-      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
-      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border: 1px solid rgba(255,255,255,.05);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 18px;
-      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      margin-top: 10px;
     }
 
     .grid {
       display: grid;
-      gap: 14px;
+      gap: 16px;
       grid-template-columns: 1fr 150px;
     }
 
     label {
       display: block;
-      font-size: .88rem;
-      color: #c6d0db;
+      font-size: .9rem;
+      color: #e2e8f0;
       margin-bottom: 8px;
       font-weight: 600;
     }
@@ -100,119 +112,147 @@
       background: #0f1318;
       color: var(--text);
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 14px 15px;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 1rem;
       outline: none;
-      transition: .18s ease;
+      transition: all .2s ease;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
     }
 
     input[type="text"]:focus, input[type="number"]:focus, select:focus {
-      border-color: rgba(125,211,252,.55);
-      box-shadow: 0 0 0 4px rgba(125,211,252,.10);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15), inset 0 2px 4px rgba(0,0,0,0.2);
     }
 
     .fuel-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 16px;
-      margin-bottom: 16px;
+      gap: 12px;
+      margin-top: 20px;
+      margin-bottom: 24px;
     }
 
     .fuel-toggle {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 13px;
-      border-radius: 999px;
+      padding: 12px 18px;
+      border-radius: 12px;
       border: 1px solid var(--line);
       background: #0e1217;
-      color: #dce5ef;
+      color: #94a3b8;
       cursor: pointer;
       user-select: none;
-      transition: .16s ease;
+      transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
       font-weight: 600;
+      font-size: .95rem;
     }
 
-    .fuel-toggle:hover { transform: translateY(-1px); }
-    .fuel-toggle.active-green { border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.10); }
-    .fuel-toggle.active-blue { border-color: rgba(96,165,250,.35); background: rgba(96,165,250,.10); }
-    .fuel-toggle.active-amber { border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.10); }
+    .fuel-toggle:hover { 
+      transform: translateY(-2px);
+      background: #1a2027;
+      color: #fff;
+    }
+    
+    .fuel-toggle.active-green { border-color: rgba(34,197,94,.5); background: rgba(34,197,94,.15); color: #fff; box-shadow: 0 4px 12px rgba(34,197,94,.1); }
+    .fuel-toggle.active-blue { border-color: rgba(96,165,250,.5); background: rgba(96,165,250,.15); color: #fff; box-shadow: 0 4px 12px rgba(96,165,250,.1); }
+    .fuel-toggle.active-amber { border-color: rgba(245,158,11,.5); background: rgba(245,158,11,.15); color: #fff; box-shadow: 0 4px 12px rgba(245,158,11,.1); }
 
     .dot {
-      width: 8px;
-      height: 8px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       background: currentColor;
+      box-shadow: 0 0 8px currentColor;
     }
 
     .actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 8px;
+      gap: 12px;
+      margin-top: 10px;
     }
 
     button {
       border: 0;
-      border-radius: 16px;
-      padding: 13px 16px;
-      font-weight: 700;
+      border-radius: 14px;
+      padding: 16px 24px;
+      font-weight: 800;
+      font-size: 1rem;
       cursor: pointer;
-      transition: .16s ease;
+      transition: all .2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .primary {
-      background: linear-gradient(180deg, var(--accent), var(--accent-2));
-      color: #081018;
+      flex: 1;
+      min-width: 200px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    }
+
+    .primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(37, 99, 235, 0.5);
     }
 
     .secondary {
-      background: #161b22;
+      flex: 1;
+      min-width: 200px;
+      background: #1e252e;
       color: var(--text);
       border: 1px solid var(--line);
+    }
+
+    .secondary:hover {
+      background: #27303b;
+      transform: translateY(-2px);
     }
 
     button:disabled {
       opacity: .65;
       cursor: wait;
+      transform: none !important;
+      box-shadow: none !important;
     }
 
     .status, .notice {
       display: none;
-      margin-top: 14px;
-      padding: 13px 14px;
-      border-radius: 16px;
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 14px;
       border: 1px solid var(--line);
       line-height: 1.5;
+      font-weight: 500;
+      text-align: center;
     }
 
-    .status.show, .notice.show { display: block; }
+    .status.show, .notice.show { display: block; animation: fadeIn 0.3s ease; }
 
-    .status {
-      background: rgba(96,165,250,.08);
-      color: #d7ecff;
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    .notice.warn {
-      background: rgba(245,158,11,.10);
-      color: #fbd38d;
-    }
-
-    .notice.error {
-      background: rgba(248,113,113,.10);
-      color: #fecaca;
-    }
+    .status { background: rgba(56, 189, 248, 0.1); color: #bae6fd; border-color: rgba(56, 189, 248, 0.2); }
+    .notice.warn { background: rgba(245,158,11,.10); color: #fbd38d; border-color: rgba(245,158,11,.2); }
+    .notice.error { background: rgba(248,113,113,.10); color: #fecaca; border-color: rgba(248,113,113,.2); }
 
     .spinner {
-      width: 15px;
-      height: 15px;
-      border: 2px solid rgba(255,255,255,.16);
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(255,255,255,.2);
       border-top-color: #fff;
       border-radius: 50%;
       display: inline-block;
       animation: spin .8s linear infinite;
-      vertical-align: -2px;
+      vertical-align: middle;
       margin-right: 8px;
     }
 
@@ -222,161 +262,231 @@
       display: none;
       justify-content: space-between;
       align-items: center;
-      margin: 18px 0 10px;
+      margin: 32px 0 16px;
       gap: 12px;
+      padding: 0 8px;
     }
 
-    .count {
-      color: var(--muted);
-      font-size: .92rem;
-    }
+    .count { color: var(--muted); font-size: .95rem; font-weight: 500; }
 
-    .results {
-      display: grid;
-      gap: 12px;
-    }
+    .results { display: grid; gap: 16px; }
 
     .empty {
-      margin-top: 12px;
-      padding: 28px 18px;
+      margin-top: 24px;
+      padding: 40px 20px;
       border-radius: 20px;
-      background: #11161b;
-      border: 1px dashed var(--line);
+      background: rgba(17, 22, 27, 0.5);
+      border: 2px dashed #242b33;
       color: var(--muted);
       text-align: center;
+      font-size: 1.1rem;
+      font-weight: 500;
     }
 
     .card {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 16px;
+      gap: 20px;
       align-items: center;
-      padding: 18px;
+      padding: 24px;
       border-radius: 20px;
-      background: linear-gradient(180deg, #11161b, #0f1419);
+      background: linear-gradient(145deg, #13181e, #0e1217);
       border: 1px solid var(--line);
-      box-shadow: var(--shadow);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      transition: transform 0.2s ease;
     }
 
+    .card:hover { transform: translateY(-2px); }
+
     .card.best {
-      border-color: rgba(34,197,94,.30);
-      box-shadow: 0 18px 50px rgba(0,0,0,.45);
+      background: linear-gradient(145deg, #13181e, #0a1f12);
+      border: 2px solid var(--green);
+      box-shadow: 0 10px 40px var(--green-glow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card.best::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: var(--green);
     }
 
     .name {
-      font-size: 1.05rem;
+      font-size: 1.2rem;
       font-weight: 800;
       letter-spacing: -.02em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     .pill {
-      display: inline-block;
-      margin-left: 8px;
-      padding: 4px 8px;
+      padding: 4px 10px;
       border-radius: 999px;
-      background: rgba(34,197,94,.14);
-      color: #86efac;
-      font-size: .72rem;
-      font-weight: 800;
-      vertical-align: 2px;
+      background: var(--green);
+      color: #000;
+      font-size: .75rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 10px var(--green-glow);
+      animation: pulse-glow 2s infinite;
+    }
+
+    @keyframes pulse-glow {
+      0% { box-shadow: 0 0 0 0 var(--green-glow); }
+      70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
     }
 
     .addr, .meta {
-      margin-top: 5px;
-      color: var(--muted);
-      font-size: .92rem;
+      margin-top: 6px;
+      color: #94a3b8;
+      font-size: .95rem;
+      line-height: 1.4;
     }
 
     .prices {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 14px;
+      gap: 10px;
+      margin-top: 16px;
     }
 
     .chip {
-      min-width: 124px;
-      padding: 10px 12px;
-      border-radius: 16px;
+      min-width: 130px;
+      padding: 12px 16px;
+      border-radius: 14px;
       border: 1px solid var(--line);
-      background: #0d1217;
+      background: rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
     }
 
-    .chip.green { background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.20); }
-    .chip.blue { background: rgba(96,165,250,.10); border-color: rgba(96,165,250,.20); }
-    .chip.amber { background: rgba(245,158,11,.10); border-color: rgba(245,158,11,.20); }
+    .chip.green { background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.30); box-shadow: inset 0 0 20px rgba(34,197,94,.05); }
+    .chip.blue { background: rgba(96,165,250,.10); border-color: rgba(96,165,250,.30); }
+    .chip.amber { background: rgba(245,158,11,.10); border-color: rgba(245,158,11,.30); }
 
     .val {
       display: block;
-      font-size: 1.06rem;
-      font-weight: 800;
-      margin-bottom: 3px;
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: #fff;
+      margin-bottom: 2px;
+      letter-spacing: -0.02em;
+    }
+    
+    .chip span:not(.val) {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.8;
     }
 
     .right {
       text-align: right;
-      min-width: 110px;
+      min-width: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-end;
     }
 
     .dist {
-      font-size: 1.45rem;
+      font-size: 1.8rem;
       font-weight: 900;
       line-height: 1;
+      color: #fff;
     }
 
     .dist span {
-      font-size: .86rem;
+      font-size: .9rem;
       color: var(--muted);
       font-weight: 700;
     }
 
     .map {
-      display: inline-block;
-      margin-top: 10px;
-      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+      padding: 8px 16px;
+      border-radius: 999px;
       text-decoration: none;
       font-weight: 700;
+      font-size: 0.85rem;
+      transition: all 0.2s;
     }
+
+    .map:hover { background: var(--accent); color: #000; }
 
     footer {
-      margin-top: 18px;
+      margin-top: 40px;
+      text-align: center;
       color: var(--muted);
-      font-size: .84rem;
+      font-size: .9rem;
       line-height: 1.5;
+      padding-bottom: 20px;
     }
 
+    .social-proof {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .avatars {
+      display: flex;
+    }
+
+    .avatars span {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--line); border: 2px solid var(--bg);
+      display: inline-block; margin-left: -8px;
+    }
+    .avatars span:first-child { margin-left: 0; background: #38bdf8; }
+    .avatars span:nth-child(2) { background: #22c55e; }
+    .avatars span:nth-child(3) { background: #f59e0b; }
+
     @media (max-width: 760px) {
-      .grid, .card {
-        grid-template-columns: 1fr;
-      }
-      .right {
-        text-align: left;
-      }
-      .sortbar {
-        flex-direction: column;
-        align-items: flex-start;
-      }
+      .grid, .card { grid-template-columns: 1fr; }
+      .right { text-align: left; align-items: flex-start; margin-top: 10px; border-top: 1px solid var(--line); padding-top: 16px;}
+      .sortbar { flex-direction: column; align-items: stretch; }
+      .actions { flex-direction: column; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <section class="hero">
-      <div class="eyebrow">PrezzoFuel</div>
-      <h1>Carburante meno caro, senza rumore.</h1>
+      <div class="eyebrow">💰 Inizia a risparmiare</div>
+      <h1>Taglia i costi del pieno.<br>All'istante.</h1>
       <div class="subtitle">
-        Cerca da CAP oppure usa la tua posizione. Interfaccia pulita, dati MIMIT.
+        Trova i distributori più economici intorno a te in un click. Dati ufficiali MIMIT aggiornati in tempo reale per garantirti sempre l'affare migliore.
       </div>
     </section>
 
     <section class="panel">
       <div class="grid">
         <div>
-          <label for="cap">CAP</label>
-          <input id="cap" type="text" inputmode="numeric" maxlength="5" placeholder="Es. 20121" />
+          <label for="cap">Dove ti trovi?</label>
+          <input id="cap" type="text" inputmode="numeric" maxlength="5" placeholder="Es. 20121 (Inserisci CAP)" />
         </div>
         <div>
-          <label for="raggio">Raggio</label>
+          <label for="raggio">Distanza (Km)</label>
           <input id="raggio" type="number" min="1" max="80" step="1" value="5" />
         </div>
       </div>
@@ -389,8 +499,8 @@
       </div>
 
       <div class="actions">
-        <button class="primary" id="searchBtn">Cerca</button>
-        <button class="secondary" id="geoBtn">Usa la mia posizione</button>
+        <button class="primary" id="searchBtn">🚀 Trova il Risparmio</button>
+        <button class="secondary" id="geoBtn">📍 Usa la mia posizione</button>
       </div>
 
       <div id="status" class="status"><div class="status-line"></div></div>
@@ -399,11 +509,11 @@
 
     <div class="sortbar" id="sortBar">
       <div class="count" id="countBadge"></div>
-      <div style="width: 180px;">
+      <div style="width: 200px;">
         <select id="sortSelect">
-          <option value="price">Prezzo</option>
-          <option value="dist">Distanza</option>
-          <option value="updated">Aggiornamento</option>
+          <option value="price">🏆 Ordina per Prezzo</option>
+          <option value="dist">📍 Ordina per Distanza</option>
+          <option value="updated">⏱️ Più Recenti</option>
         </select>
       </div>
     </div>
@@ -411,7 +521,11 @@
     <div class="results" id="results"></div>
 
     <footer>
-      PrezzoFuel · Dati carburanti da fonti pubbliche
+      PrezzoFuel · Dati trasparenti dal Ministero delle Imprese e del Made in Italy
+      <div class="social-proof">
+        <div class="avatars"><span></span><span></span><span></span></div>
+        Unisciti a chi non regala soldi ai petrolieri
+      </div>
     </footer>
   </div>
 
@@ -463,15 +577,20 @@
   function setBusy(busy) {
     el.searchBtn.disabled = busy;
     el.geoBtn.disabled = busy;
+    if(busy) {
+        el.searchBtn.innerHTML = '<span class="spinner"></span> Analizzo i prezzi...';
+    } else {
+        el.searchBtn.innerHTML = '🚀 Trova il Risparmio';
+    }
   }
 
   function escapeHtml(value) {
     return String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/&/g, "&")
+      .replace(/</g, "<")
+      .replace(/>/g, ">")
+      .replace(/"/g, "\"")
+      .replace(/'/g, "'");
   }
 
   function setStatus(message, loading = false) {
@@ -581,10 +700,10 @@
 
     const overallBest = Math.min(...sorted.map(bestPrice));
     el.sortBar.style.display = "flex";
-    el.countBadge.textContent = `${sorted.length} stazioni · ${state.lastDataSource || "dati"}`;
+    el.countBadge.innerHTML = `Trovate <strong>${sorted.length} stazioni</strong> in zona`;
 
     el.results.innerHTML = sorted.map((s, idx) => {
-      const isBestStation = bestPrice(s) === overallBest && idx === 0;
+      const isBestStation = bestPrice(s) === overallBest && idx === 0 && sort === "price";
       const stationTitle = s.flag || s.nome || "Impianto";
       const fullAddr = [s.indirizzo, `${s.comune} (${s.prov})`].filter(Boolean).join(" — ");
       const latest = Math.max(...s.priceList.map(p => Date.parse(p.dt) || 0));
@@ -603,14 +722,14 @@
       return `
         <div class="card ${isBestStation ? "best" : ""}">
           <div>
-            <div class="name">${escapeHtml(stationTitle)} ${isBestStation ? '<span class="pill">miglior prezzo</span>' : ''}</div>
+            <div class="name">${escapeHtml(stationTitle)} ${isBestStation ? '<span class="pill">🔥 Super Prezzo</span>' : ''}</div>
             <div class="addr">${escapeHtml(fullAddr)}</div>
             <div class="prices">${chips}</div>
-            <div class="meta">${fresh ? "aggiornamento recente" : "aggiornamento non recentissimo"}${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT")) : ""}</div>
+            <div class="meta">${fresh ? "🟢 Aggiornato di recente" : "🟠 Aggiornamento meno recente"}${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT", {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})) : ""}</div>
           </div>
           <div class="right">
             <div class="dist">${s.dist.toFixed(1)} <span>km</span></div>
-            <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">Apri mappa</a>
+            <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">🗺️ Vai qui</a>
           </div>
         </div>
       `;
@@ -627,7 +746,7 @@
     }
 
     if (!state.activeFuels.size) {
-      alert("Seleziona almeno un carburante.");
+      alert("Seleziona almeno un carburante per risparmiare.");
       return;
     }
 
@@ -637,7 +756,7 @@
     el.sortBar.style.display = "none";
 
     try {
-      setStatus("Cerco i distributori migliori...", true);
+      setStatus("Scansiono i prezzi del database MIMIT...", true);
       await searchViaBackend({
         cap,
         radius: String(radius),
@@ -646,7 +765,7 @@
       setStatus("");
 
       if (!state.risultati.length) {
-        showEmpty(`Nessuna stazione trovata entro ${radius} km dal CAP ${cap}.`);
+        showEmpty(`Nessun affare trovato entro ${radius} km dal CAP ${cap}. Prova ad ampliare il raggio!`);
         return;
       }
 
@@ -654,7 +773,7 @@
     } catch (err) {
       setStatus("");
       showEmpty(err.message);
-      setNotice("Impossibile completare la ricerca.", "error");
+      setNotice("Impossibile completare la ricerca dei prezzi.", "error");
     } finally {
       setBusy(false);
     }
@@ -692,10 +811,10 @@
     el.sortBar.style.display = "none";
 
     try {
-      setStatus("Recupero la tua posizione...", true);
+      setStatus("Ti sto localizzando...", true);
       const pos = await getBrowserPosition();
 
-      setStatus("Cerco i distributori migliori...", true);
+      setStatus("Cerco le pompe più economiche vicino a te...", true);
       await searchViaBackend({
         mode: "coords",
         lat: String(pos.lat),
@@ -707,7 +826,7 @@
       setStatus("");
 
       if (!state.risultati.length) {
-        showEmpty(`Nessuna stazione trovata entro ${radius} km dalla tua posizione.`);
+        showEmpty(`Nessun distributore trovato entro ${radius} km dalla tua posizione.`);
         return;
       }
 
@@ -715,13 +834,13 @@
     } catch (err) {
       setStatus("");
       showEmpty(err.message);
-      setNotice("Controlla i permessi di geolocalizzazione.", "error");
+      setNotice("Controlla i permessi del GPS del tuo telefono/browser.", "error");
     } finally {
       setBusy(false);
     }
   }
 
-  showEmpty("Inserisci un CAP oppure usa la tua posizione.");
+  showEmpty("💸 Inizia a risparmiare: inserisci il tuo CAP o usa la posizione esatta!");
 })();
 </script>
 </body>
