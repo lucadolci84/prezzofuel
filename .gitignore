@@ -1,3 +1,31 @@
-.vercel
-.env*.local
+# Dipendenze
+node_modules/
+
+# Build / deploy locali
+.vercel/
+.next/
+dist/
+build/
+
+# File di ambiente
+.env
+.env.local
+.env.*.local
+
+# Log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Visual Studio / VS Code
 .vs/
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# File temporanei
+*.tmp
+*.temp
