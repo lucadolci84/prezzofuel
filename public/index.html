@@ -752,6 +752,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7373484350889688" crossorigin="anonymous"></script>
+
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js"></script>
 </head>
 
 <!-- Google tag (gtag.js) -->
@@ -765,6 +767,8 @@
 </script>
 
 <body>
+    <amp-auto-ads type="adsense" data-ad-client="ca-pub-7373484350889688"></amp-auto-ads>
+
     <header>
         <img src="/assets/images/prezzofuel-logo.svg" id="logo" alt="PrezzoFuel, taglia i costi del pieno" />
     </header>
@@ -1199,10 +1203,10 @@
                         fillColor: "#ffffff",
                         fillOpacity: 1
                     }).bindPopup(`
-            <div class="map-popup">
-                <div class="title">Centro ricerca</div>
-            </div>
-        `);
+                <div class="map-popup">
+                    <div class="title">Centro ricerca</div>
+                </div>
+            `);
 
                     centerMarker.addTo(state.mapLayer);
                     bounds.push([state.searchCenter.lat, state.searchCenter.lon]);
@@ -1221,16 +1225,16 @@
                     const marker = L.marker([Number(s.lat), Number(s.lon)], {
                         icon: createDivIcon(markerType)
                     }).bindPopup(`
-            <div class="map-popup">
-                <div class="title">${escapeHtml(s.nome || "Distributore")}</div>
-                <div class="meta">
-                    ${escapeHtml(s.indirizzo || "")}<br>
-                    ${escapeHtml([s.comune, s.prov].filter(Boolean).join(" "))}<br>
-                    ${Number(s.dist).toFixed(1)} km
+                <div class="map-popup">
+                    <div class="title">${escapeHtml(s.nome || "Distributore")}</div>
+                    <div class="meta">
+                        ${escapeHtml(s.indirizzo || "")}<br>
+                        ${escapeHtml([s.comune, s.prov].filter(Boolean).join(" "))}<br>
+                        ${Number(s.dist).toFixed(1)} km
+                    </div>
+                    <div class="price">${priceText}</div>
                 </div>
-                <div class="price">${priceText}</div>
-            </div>
-        `);
+            `);
 
                     marker.addTo(state.mapLayer);
                     bounds.push([Number(s.lat), Number(s.lon)]);
@@ -1385,21 +1389,21 @@
                             const measure = p.tipo === "metano" ? "€/kg" : "€/L";
 
                             return `
-              <div class="chip ${cls}">
-                <span class="val">${p.prezzo.toFixed(3)}</span>
-                <span>${escapeHtml(fuelLabels[p.tipo] || p.tipo)}${p.self ? " Self" : ""} ${measure}</span>
-              </div>
-            `;
+                  <div class="chip ${cls}">
+                    <span class="val">${p.prezzo.toFixed(3)}</span>
+                    <span>${escapeHtml(fuelLabels[p.tipo] || p.tipo)}${p.self ? " Self" : ""} ${measure}</span>
+                  </div>
+                `;
                         }).join("");
 
                     let badgesHtml = '<div class="badges-container">';
 
                     if (savingsInfo && !isWorstStation) {
                         badgesHtml += `
-            <div class="savings-badge">
-              Risparmi fino a ${savingsInfo.amount.toFixed(2)}€ sul pieno di ${escapeHtml(savingsInfo.fuelLabel)}*
-            </div>
-          `;
+                <div class="savings-badge">
+                  Risparmi fino a ${savingsInfo.amount.toFixed(2)}€ sul pieno di ${escapeHtml(savingsInfo.fuelLabel)}*
+                </div>
+              `;
                     }
 
                     if (isWorstStation) {
@@ -1409,36 +1413,36 @@
                     badgesHtml += "</div>";
 
                     return `
-          <div class="card ${isBestStation ? "best" : ""} ${isWorstStation ? "worst" : ""}">
-            <div>
-              <div class="name">
-                ${escapeHtml(stationTitle)}
-                ${isBestStation ? '<span class="pill">🔥 SUPER PREZZO</span>' : ""}
-              </div>
+              <div class="card ${isBestStation ? "best" : ""} ${isWorstStation ? "worst" : ""}">
+                <div>
+                  <div class="name">
+                    ${escapeHtml(stationTitle)}
+                    ${isBestStation ? '<span class="pill">🔥 SUPER PREZZO</span>' : ""}
+                  </div>
 
-              <div class="addr">${escapeHtml(fullAddr)}</div>
+                  <div class="addr">${escapeHtml(fullAddr)}</div>
 
-              <div class="prices">${chips}</div>
+                  <div class="prices">${chips}</div>
 
-              ${badgesHtml}
+                  ${badgesHtml}
 
-              <div class="meta">
-                ${fresh ? "🟢 Aggiornato di recente" : "🟠 Aggiornamento meno recente"}
-                ${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT", {
+                  <div class="meta">
+                    ${fresh ? "🟢 Aggiornato di recente" : "🟠 Aggiornamento meno recente"}
+                    ${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT", {
                         day: "2-digit",
                         month: "short",
                         hour: "2-digit",
                         minute: "2-digit"
                     })) : ""}
-              </div>
-            </div>
+                  </div>
+                </div>
 
-            <div class="right">
-              <div class="dist">${s.dist.toFixed(1)} <span>km</span></div>
-              <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">Vai qui</a>
-            </div>
-          </div>
-        `;
+                <div class="right">
+                  <div class="dist">${s.dist.toFixed(1)} <span>km</span></div>
+                  <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">Vai qui</a>
+                </div>
+              </div>
+            `;
                 }).join("");
 
                 renderMap();
