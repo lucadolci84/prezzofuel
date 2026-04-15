@@ -785,7 +785,7 @@
             <div class="grid">
                 <div>
                     <label for="cap">Dove ti trovi?</label>
-                    <input id="cap" type="text" inputmode="numeric" maxlength="5" placeholder="Es. 20121 (Inserisci CAP)" />
+                    <input id="cap" type="text" placeholder="Es. 20121 oppure Via Roma 10, Milano" />
                 </div>
                 <div>
                     <label for="raggio">Distanza (Km)</label>
@@ -922,10 +922,10 @@
                 node.addEventListener("click", () => toggleFuel(node));
             });
 
-            el.searchBtn.addEventListener("click", searchByCap);
+            el.searchBtn.addEventListener("click", searchByQuery);
             el.geoBtn.addEventListener("click", searchByBrowserLocation);
             el.sortSelect.addEventListener("change", renderResults);
-            el.cap.addEventListener("keydown", e => { if (e.key === "Enter") searchByCap(); });
+            el.cap.addEventListener("keydown", e => { if (e.key === "Enter") searchByQuery(); });
 
             function toggleFuel(node) {
                 const fuel = node.dataset.fuel;
@@ -1448,12 +1448,12 @@
                 renderMap();
             }
 
-            async function searchByCap() {
-                const cap = el.cap.value.trim();
+            async function searchByQuery() {
+                const query = el.cap.value.trim();
                 const radius = Math.max(1, Math.min(80, Number(el.raggio.value) || 5));
 
-                if (!/^\d{5}$/.test(cap)) {
-                    alert("Inserisci un CAP valido di 5 cifre.");
+                if (!query) {
+                    alert("Inserisci un CAP o un indirizzo.");
                     return;
                 }
 
@@ -1468,16 +1468,30 @@
                 el.sortBar.style.display = "none";
 
                 try {
-                    setStatus("Scansiono i prezzi del database MIMIT...", true);
+                    setStatus("Cerco la zona richiesta e analizzo i prezzi...", true);
+                    
                     await searchViaBackend({
-                        cap,
+                        q: query,
                         radius: String(radius),
                         fuels: [...state.activeFuels].join(",")
                     });
+
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete("cap");
+                    url.searchParams.delete("q");
+
+                    if (/^\d{5}$/.test(query)) {
+                        url.searchParams.set("cap", query);
+                    } else {
+                        url.searchParams.set("q", query);
+                    }
+
+                    window.history.replaceState({}, "", url);
+
                     setStatus("");
 
                     if (!state.risultati.length) {
-                        showEmpty(`Nessun affare trovato entro ${radius} km dal CAP ${cap}. Prova ad ampliare il raggio!`);
+                        showEmpty(`Nessun affare trovato entro ${radius} km da "${escapeHtml(query)}". Prova ad ampliare il raggio!`);
                         return;
                     }
 
@@ -1571,29 +1585,29 @@
             };
 
             const urlParams = new URLSearchParams(window.location.search);
-            const capParam = urlParams.get('cap');
+            const capParam = urlParams.get("cap");
+            const qParam = urlParams.get("q");
+            const initialQuery = (qParam || capParam || "").trim();
 
-            if (capParam && /^\d{5}$/.test(capParam)) {
-                el.cap.value = capParam;
+            if (initialQuery) {
+                el.cap.value = initialQuery;
 
-                // --- MAGIA SEO: Cambia H1 e Title se riconosciamo la città ---
-                const cityName = capToCity[capParam];
-                if (cityName) {
-                    const h1El = document.querySelector('h1');
-                    // Aggiorna l'H1 mantenendo il design su due righe
-                    h1El.innerHTML = `Prezzi carburante a ${cityName}.<br>Taglia i costi del pieno.`;
-
-                    // Aggiorna il titolo della scheda del browser (Super importante per Google!)
-                    document.title = `Prezzi Benzina e Diesel a ${cityName} | PrezzoFuel`;
+                if (/^\d{5}$/.test(initialQuery)) {
+                    const cityName = capToCity[initialQuery];
+                    if (cityName) {
+                        const h1El = document.querySelector("h1");
+                        h1El.innerHTML = `Prezzi carburante a ${cityName}.<br>Taglia i costi del pieno.`;
+                        document.title = `Prezzi Benzina e Diesel a ${cityName} | PrezzoFuel`;
+                    }
                 }
 
-                showEmpty(`Ricerca automatica dei prezzi per il CAP ${escapeHtml(capParam)} in corso...`);
+                showEmpty(`Ricerca automatica dei prezzi per "${escapeHtml(initialQuery)}" in corso...`);
 
                 setTimeout(() => {
-                    searchByCap();
+                    searchByQuery();
                 }, 100);
             } else {
-                showEmpty("💸 Inizia a risparmiare: inserisci il tuo CAP o usa la posizione esatta!");
+                showEmpty("💸 Inizia a risparmiare: inserisci il tuo CAP, un indirizzo o usa la posizione esatta!");
             }
 
             // --- FINE NUOVO CODICE SEO ---

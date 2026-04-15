@@ -209,45 +209,68 @@ export async function loadDataset() {
   return globalCache.dataset;
 }
 
-export async function geocodeCap(cap) {
-  const key = String(cap).trim();
-  const cached = globalCache.geocode.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
+export async function geocodePlace(input) {
+    const raw = String(input || "").trim();
+    if (!raw) {
+        throw new Error("Inserisci un CAP o un indirizzo");
+    }
 
-  const url = `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(key)}&country=Italy&format=jsonv2&limit=1`;
+    const cacheKey = raw.toLowerCase();
+    const cached = globalCache.geocode.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
 
-  let res;
-  try {
-    res = await fetch(url, {
-      headers: {
-        "Accept": "application/json",
-        "Accept-Language": "it",
-        "User-Agent": "Mozilla/5.0 PrezzoFuel/1.0",
-      },
+    const isCap = /^\d{5}$/.test(raw);
+
+    const params = new URLSearchParams({
+        format: "jsonv2",
+        limit: "1",
+        countrycodes: "it",
+        "accept-language": "it",
     });
-  } catch {
-    throw new Error("Geocoding: errore di rete");
-  }
 
-  if (!res.ok) throw new Error(`Geocoding: HTTP ${res.status}`);
+    if (isCap) {
+        params.set("postalcode", raw);
+        params.set("country", "Italy");
+    } else {
+        params.set("q", raw);
+    }
 
-  const data = await res.json();
-  if (!Array.isArray(data) || !data.length) {
-    throw new Error("CAP non trovato");
-  }
+    const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
 
-  const value = {
-    lat: parseFloat(data[0].lat),
-    lon: parseFloat(data[0].lon),
-    label: data[0].display_name || key,
-  };
+    let res;
+    try {
+        res = await fetch(url, {
+            headers: {
+                "Accept": "application/json",
+                "Accept-Language": "it",
+                "User-Agent": "Mozilla/5.0 PrezzoFuel/1.0",
+            },
+        });
+    } catch {
+        throw new Error("Geocoding: errore di rete");
+    }
 
-  globalCache.geocode.set(key, {
-    expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-    value,
-  });
+    if (!res.ok) throw new Error(`Geocoding: HTTP ${res.status}`);
 
-  return value;
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) {
+        throw new Error(isCap ? "CAP non trovato" : "Indirizzo non trovato");
+    }
+
+    const value = {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon),
+        label: data[0].display_name || raw,
+        query: raw,
+        type: isCap ? "cap" : "address",
+    };
+
+    globalCache.geocode.set(cacheKey, {
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+        value,
+    });
+
+    return value;
 }
 
 export function buildResults({ stations, prices, lat, lon, radiusKm, fuels }) {
