@@ -450,6 +450,19 @@ export default async function handler(req, res) {
             apiMode: enriched.mode,
             count: enriched.products.length,
             warnings: enriched.warnings,
+            debug: {
+                productsModeRaw: process.env.AMAZON_PRODUCTS_MODE || null,
+                productsModeNormalized: String(process.env.AMAZON_PRODUCTS_MODE || 'static').toLowerCase(),
+                hasAssociateTag: Boolean(process.env.AMAZON_ASSOCIATE_TAG),
+                hasPublicKey: Boolean(process.env.AMAZON_CREATORS_PUBLIC_KEY || process.env.AMAZON_CREATOR_CLIENT_ID),
+                hasPrivateKey: Boolean(process.env.AMAZON_CREATORS_PRIVATE_KEY || process.env.AMAZON_CREATOR_CLIENT_SECRET),
+                marketplace:
+                    process.env.AMAZON_MARKETPLACE ||
+                    process.env.AMAZON_CREATOR_MARKETPLACE ||
+                    null,
+                region: process.env.AMAZON_CREATOR_REGION || null,
+                credentialVersion: process.env.AMAZON_CREATOR_CREDENTIAL_VERSION || null
+            },
             products: enriched.products
         });
     } catch (err) {
