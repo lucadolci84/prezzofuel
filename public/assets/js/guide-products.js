@@ -70,7 +70,12 @@
             }
 
             renderProducts(data.products);
-            statusEl.textContent = '';
+
+            if (data.apiMode === 'creators-live') {
+                statusEl.textContent = '';
+            } else {
+                statusEl.textContent = 'Selezione manuale con immagini e link affiliati Amazon. Prezzi live non disponibili al momento.';
+            }
 
             if (countEl) {
                 countEl.textContent = `${data.products.length} prodotti selezionati`;
