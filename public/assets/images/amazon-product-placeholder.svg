@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" fill="none">
+  <rect width="640" height="480" rx="32" fill="#0f1318"/>
+  <rect x="24" y="24" width="592" height="432" rx="24" fill="#12161b" stroke="#242b33" stroke-width="4"/>
+  <rect x="160" y="90" width="320" height="200" rx="24" fill="#171c22" stroke="#2b3440" stroke-width="4"/>
+  <path d="M218 275l66-72 52 54 46-40 40 58H218z" fill="#38bdf8" fill-opacity="0.2" stroke="#38bdf8" stroke-width="8" stroke-linejoin="round"/>
+  <circle cx="275" cy="150" r="22" fill="#38bdf8" fill-opacity="0.35"/>
+  <text x="320" y="350" text-anchor="middle" fill="#eef2f7" font-size="28" font-family="Arial, Helvetica, sans-serif" font-weight="700">Immagine prodotto Amazon</text>
+  <text x="320" y="387" text-anchor="middle" fill="#95a0ad" font-size="18" font-family="Arial, Helvetica, sans-serif">Sostituisci questo file con l'immagine ufficiale del prodotto</text>
+</svg>
