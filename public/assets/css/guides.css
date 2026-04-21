@@ -336,3 +336,21 @@ h1 {
         flex-direction: column;
     }
 }
+
+.product-meta {
+    display: grid;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.product-price {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.product-meta-row {
+    color: var(--muted);
+    font-size: .92rem;
+    line-height: 1.45;
+}

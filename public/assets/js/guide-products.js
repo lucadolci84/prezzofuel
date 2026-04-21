@@ -17,6 +17,25 @@
             .replace(/'/g, '&#39;');
     }
 
+    function renderMeta(item) {
+        const parts = [];
+
+        if (item.priceDisplay) {
+            parts.push(`<div class="product-price">${escapeHtml(item.priceDisplay)}</div>`);
+        }
+
+        if (item.availability) {
+            parts.push(`<div class="product-meta-row">Disponibilità: ${escapeHtml(item.availability)}</div>`);
+        }
+
+        if (item.brand) {
+            parts.push(`<div class="product-meta-row">Brand: ${escapeHtml(item.brand)}</div>`);
+        }
+
+        if (!parts.length) return '';
+        return `<div class="product-meta">${parts.join('')}</div>`;
+    }
+
     function renderProducts(items) {
         listEl.innerHTML = items.map((item) => `
       <article class="product-card">
@@ -30,6 +49,7 @@
           <span class="product-tag">${escapeHtml(item.label)}</span>
           <h3>${escapeHtml(item.title)}</h3>
           <p>${escapeHtml(item.description)}</p>
+          ${renderMeta(item)}
           <div class="product-actions">
             <a class="btn" href="${escapeHtml(item.amazonUrl)}" target="_blank" rel="nofollow sponsored noopener">Vedi su Amazon</a>
           </div>
