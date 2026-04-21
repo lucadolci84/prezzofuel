@@ -938,35 +938,26 @@
                 </p>
             </div>
 
-            <section class="guides-home-minimal" aria-labelledby="guide-utili-title">
-                <div class="guides-home-head">
-                    <h2 id="guide-utili-title">Guide utili per chi guida</h2>
-                    <p>
-                        Oltre alla ricerca dei prezzi, qui trovi anche consigli pratici per affrontare gli imprevisti,
-                        viaggiare con più comodità e tenere l’auto più ordinata ogni giorno.
-                    </p>
-                </div>
+            <div class="guides-home-grid">
+                <a class="guide-link-card" href="/kit-emergenza-auto.html">
+                    <span class="mini-label">Emergenze</span>
+                    <h3>Kit emergenza auto</h3>
+                    <p>Cosa tenere in macchina per gestire batteria scarica, gomme e soste notturne con più tranquillità.</p>
+                </a>
 
-                <div class="guides-home-grid">
-                    <a class="guide-link-card" href="/kit-emergenza-auto.html">
-                        <span class="mini-label">Emergenze</span>
-                        <h3>Kit emergenza auto</h3>
-                        <p>Cosa tenere in macchina per gestire batteria scarica, gomme e soste notturne con più tranquillità.</p>
-                    </a>
+                <a class="guide-link-card" href="/accessori-viaggi-auto.html">
+                    <span class="mini-label">Viaggio</span>
+                    <h3>Accessori per viaggi lunghi</h3>
+                    <p>Una selezione di accessori utili per navigazione, ricarica e comfort durante i tragitti più lunghi.</p>
+                </a>
 
-                    <a class="guide-link-card" href="/accessori-viaggi-auto.html">
-                        <span class="mini-label">Viaggio</span>
-                        <h3>Accessori per viaggi lunghi</h3>
-                        <p>Una selezione di accessori utili per navigazione, ricarica e comfort durante i tragitti più lunghi.</p>
-                    </a>
-
-                    <a class="guide-link-card" href="/organizzazione-bagagliaio.html">
-                        <span class="mini-label">Ordine</span>
-                        <h3>Organizzazione bagagliaio</h3>
-                        <p>Soluzioni semplici per avere più ordine, più spazio utile e meno caos nel baule.</p>
-                    </a>
-                </div>
-            </section>
+                <a class="guide-link-card" href="/organizzazione-bagagliaio.html">
+                    <span class="mini-label">Ordine</span>
+                    <h3>Organizzazione bagagliaio</h3>
+                    <p>Soluzioni semplici per avere più ordine, più spazio utile e meno caos nel baule.</p>
+                </a>
+            </div>
+        </section>
 
         <footer>
             PrezzoFuel · Dati trasparenti dal Ministero delle Imprese e del Made in Italy
@@ -1347,10 +1338,10 @@
                         fillColor: "#ffffff",
                         fillOpacity: 1
                     }).bindPopup(`
-                <div class="map-popup">
-                    <div class="title">Centro ricerca</div>
-                </div>
-            `);
+                    <div class="map-popup">
+                        <div class="title">Centro ricerca</div>
+                    </div>
+                `);
 
                     centerMarker.addTo(state.mapLayer);
                     bounds.push([state.searchCenter.lat, state.searchCenter.lon]);
@@ -1369,16 +1360,16 @@
                     const marker = L.marker([Number(s.lat), Number(s.lon)], {
                         icon: createDivIcon(markerType)
                     }).bindPopup(`
-                <div class="map-popup">
-                    <div class="title">${escapeHtml(s.nome || "Distributore")}</div>
-                    <div class="meta">
-                        ${escapeHtml(s.indirizzo || "")}<br>
-                        ${escapeHtml([s.comune, s.prov].filter(Boolean).join(" "))}<br>
-                        ${Number(s.dist).toFixed(1)} km
+                    <div class="map-popup">
+                        <div class="title">${escapeHtml(s.nome || "Distributore")}</div>
+                        <div class="meta">
+                            ${escapeHtml(s.indirizzo || "")}<br>
+                            ${escapeHtml([s.comune, s.prov].filter(Boolean).join(" "))}<br>
+                            ${Number(s.dist).toFixed(1)} km
+                        </div>
+                        <div class="price">${priceText}</div>
                     </div>
-                    <div class="price">${priceText}</div>
-                </div>
-            `);
+                `);
 
                     marker.addTo(state.mapLayer);
                     bounds.push([Number(s.lat), Number(s.lon)]);
@@ -1533,21 +1524,21 @@
                             const measure = p.tipo === "metano" ? "€/kg" : "€/L";
 
                             return `
-                  <div class="chip ${cls}">
-                    <span class="val">${p.prezzo.toFixed(3)}</span>
-                    <span>${escapeHtml(fuelLabels[p.tipo] || p.tipo)}${p.self ? " Self" : ""} ${measure}</span>
-                  </div>
-                `;
+                      <div class="chip ${cls}">
+                        <span class="val">${p.prezzo.toFixed(3)}</span>
+                        <span>${escapeHtml(fuelLabels[p.tipo] || p.tipo)}${p.self ? " Self" : ""} ${measure}</span>
+                      </div>
+                    `;
                         }).join("");
 
                     let badgesHtml = '<div class="badges-container">';
 
                     if (savingsInfo && !isWorstStation) {
                         badgesHtml += `
-                <div class="savings-badge">
-                  Risparmi fino a ${savingsInfo.amount.toFixed(2)}€ sul pieno di ${escapeHtml(savingsInfo.fuelLabel)}*
-                </div>
-              `;
+                    <div class="savings-badge">
+                      Risparmi fino a ${savingsInfo.amount.toFixed(2)}€ sul pieno di ${escapeHtml(savingsInfo.fuelLabel)}*
+                    </div>
+                  `;
                     }
 
                     if (isWorstStation) {
@@ -1557,36 +1548,36 @@
                     badgesHtml += "</div>";
 
                     return `
-              <div class="card ${isBestStation ? "best" : ""} ${isWorstStation ? "worst" : ""}">
-                <div>
-                  <div class="name">
-                    ${escapeHtml(stationTitle)}
-                    ${isBestStation ? '<span class="pill">🔥 SUPER PREZZO</span>' : ""}
-                  </div>
+                  <div class="card ${isBestStation ? "best" : ""} ${isWorstStation ? "worst" : ""}">
+                    <div>
+                      <div class="name">
+                        ${escapeHtml(stationTitle)}
+                        ${isBestStation ? '<span class="pill">🔥 SUPER PREZZO</span>' : ""}
+                      </div>
 
-                  <div class="addr">${escapeHtml(fullAddr)}</div>
+                      <div class="addr">${escapeHtml(fullAddr)}</div>
 
-                  <div class="prices">${chips}</div>
+                      <div class="prices">${chips}</div>
 
-                  ${badgesHtml}
+                      ${badgesHtml}
 
-                  <div class="meta">
-                    ${fresh ? "🟢 Aggiornato di recente" : "🟠 Aggiornamento meno recente"}
-                    ${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT", {
+                      <div class="meta">
+                        ${fresh ? "🟢 Aggiornato di recente" : "🟠 Aggiornamento meno recente"}
+                        ${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT", {
                         day: "2-digit",
                         month: "short",
                         hour: "2-digit",
                         minute: "2-digit"
                     })) : ""}
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
-                <div class="right">
-                  <div class="dist">${s.dist.toFixed(1)} <span>km</span></div>
-                  <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">Vai qui</a>
-                </div>
-              </div>
-            `;
+                    <div class="right">
+                      <div class="dist">${s.dist.toFixed(1)} <span>km</span></div>
+                      <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">Vai qui</a>
+                    </div>
+                  </div>
+                `;
                 }).join("");
 
                 renderMap();
@@ -1613,7 +1604,7 @@
 
                 try {
                     setStatus("Cerco la zona richiesta e analizzo i prezzi...", true);
-                    
+
                     await searchViaBackend({
                         q: query,
                         radius: String(radius),
