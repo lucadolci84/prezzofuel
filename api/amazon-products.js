@@ -240,8 +240,23 @@ async function getCreatorsAccessToken(config) {
         payload = null;
     }
 
+    const tokenRequestId =
+        response.headers.get('x-amzn-requestid') ||
+        response.headers.get('x-amz-request-id') ||
+        null;
+
     if (!response.ok) {
-        throw new Error(`Token Amazon non valido (${response.status})`);
+        const detail =
+            payload?.error_description ||
+            payload?.error ||
+            raw ||
+            'nessun dettaglio';
+
+        throw new Error(
+            `Token Amazon non valido (${response.status})` +
+            (tokenRequestId ? ` [requestId: ${tokenRequestId}]` : '') +
+            ` - ${String(detail).slice(0, 800)}`
+        );
     }
 
     const accessToken = payload?.access_token;
@@ -357,8 +372,25 @@ async function fetchCreatorsProducts(baseProducts) {
         data = null;
     }
 
+    const requestId =
+        response.headers.get('x-amzn-requestid') ||
+        response.headers.get('x-amz-request-id') ||
+        null;
+
     if (!response.ok) {
-        throw new Error(`GetItems Amazon non valido (${response.status})`);
+        const detail =
+            data?.message ||
+            (Array.isArray(data?.errors)
+                ? data.errors.map((e) => `${e.code || 'ERR'}: ${e.message || ''}`).join(' | ')
+                : null) ||
+            raw ||
+            'nessun dettaglio';
+
+        throw new Error(
+            `GetItems Amazon non valido (${response.status})` +
+            (requestId ? ` [requestId: ${requestId}]` : '') +
+            ` - ${String(detail).slice(0, 1200)}`
+        );
     }
 
     const items = Array.isArray(data?.itemsResult?.items)
@@ -451,6 +483,11 @@ export default async function handler(req, res) {
             count: enriched.products.length,
             warnings: enriched.warnings,
             debug: {
+                hasApplicationId: Boolean(process.env.AMAZON_CREATORS_APPLICATION_ID),
+                applicationIdPrefix: process.env.AMAZON_CREATORS_APPLICATION_ID ? String(process.env.AMAZON_CREATORS_APPLICATION_ID).slice(0, 8) : null,
+                apiBaseUrl: process.env.AMAZON_CREATOR_API_BASE_URL || null,
+                tokenUrl: process.env.AMAZON_CREATOR_TOKEN_URL || null,
+                scope: process.env.AMAZON_CREATOR_SCOPE || null,
                 productsModeRaw: process.env.AMAZON_PRODUCTS_MODE || null,
                 productsModeNormalized: String(process.env.AMAZON_PRODUCTS_MODE || 'static').toLowerCase(),
                 hasAssociateTag: Boolean(process.env.AMAZON_ASSOCIATE_TAG),
