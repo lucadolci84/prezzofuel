@@ -52,9 +52,15 @@
     }, true);
 
     fuelRow.addEventListener('click', function (event) {
-      const normalFuel = event.target.closest('.fuel-toggle[data-fuel]:not([data-fuel="elettrico"])');
-      if (normalFuel && evMode) setEvMode(false);
-    }, true);
+  const normalFuel = event.target.closest('.fuel-toggle[data-fuel]:not([data-fuel="elettrico"])');
+  if (!normalFuel || !evMode) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+
+  switchFromEvToFuel(normalFuel);
+}, true);
 
     connectorRow.addEventListener('click', function (event) {
       const item = event.target.closest('.ev-connector-chip');
@@ -127,6 +133,54 @@
         }
       });
     }
+	
+	function isFuelClassActive(className) {
+  return /\bactive-(green|blue|amber|cyan)\b/.test(className || '');
+}
+
+function activeClassForFuel(fuel) {
+  const map = {
+    benzina: 'active-green',
+    diesel: 'active-blue',
+    gpl: 'active-amber',
+    metano: 'active-amber',
+    hvo: 'active-blue'
+  };
+
+  return map[fuel] || 'active-green';
+}
+
+function switchFromEvToFuel(selectedButton) {
+  const buttons = fuelButtons();
+  const selectedFuel = selectedButton.getAttribute('data-fuel');
+
+  const wasActive = {};
+
+  buttons.forEach(function (button) {
+    const fuel = button.getAttribute('data-fuel');
+    const previousClass = button.getAttribute('data-ev-prev-class') || button.className;
+    wasActive[fuel] = isFuelClassActive(previousClass);
+  });
+
+  setEvMode(false);
+
+  buttons.forEach(function (button) {
+    const fuel = button.getAttribute('data-fuel');
+    const shouldBeActive = fuel === selectedFuel;
+
+    if (Boolean(wasActive[fuel]) !== shouldBeActive) {
+      button.click();
+    }
+  });
+
+  buttons.forEach(function (button) {
+    const fuel = button.getAttribute('data-fuel');
+
+    button.className = fuel === selectedFuel
+      ? 'fuel-toggle ' + activeClassForFuel(fuel)
+      : 'fuel-toggle';
+  });
+}
 
     function setEvMode(enabled) {
       const nextEvMode = Boolean(enabled);
