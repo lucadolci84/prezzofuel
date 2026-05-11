@@ -27,6 +27,7 @@
 
     const originalSearchText = searchBtn.textContent;
     const originalSortOptions = sortSelect ? sortSelect.innerHTML : '';
+    const fuelActiveClasses = ['active-green', 'active-blue', 'active-amber', 'active-cyan'];
     let evMode = false;
     let lastEvParams = null;
     let evMap = null;
@@ -102,8 +103,40 @@
       fuelRow.insertAdjacentHTML('afterend', '\n        <div class="ev-connectors-panel" id="evConnectorFilters" hidden>\n          <div class="ev-filter-title">Tipo di ricarica</div>\n          <div class="ev-filter-help">Puoi lasciare selezionati tutti i tipi se non sai quale scegliere.</div>\n          <div class="ev-connector-row">\n            <button type="button" class="ev-connector-chip is-active" data-connector="type2">\n              <span>AC / Type 2</span><small>ricarica normale</small>\n            </button>\n            <button type="button" class="ev-connector-chip is-active" data-connector="ccs">\n              <span>DC rapida / CCS</span><small>auto moderne</small>\n            </button>\n            <button type="button" class="ev-connector-chip" data-connector="chademo">\n              <span>CHAdeMO</span><small>alcuni modelli datati</small>\n            </button>\n          </div>\n        </div>\n      ');
     }
 
+    function fuelButtons() {
+      return Array.from(fuelRow.querySelectorAll('.fuel-toggle[data-fuel]:not([data-fuel="elettrico"])'));
+    }
+
+    function hideFuelActiveState() {
+      fuelButtons().forEach(function (button) {
+        if (!button.hasAttribute('data-ev-prev-class')) {
+          button.setAttribute('data-ev-prev-class', button.className);
+        }
+        fuelActiveClasses.forEach(function (className) {
+          button.classList.remove(className);
+        });
+      });
+    }
+
+    function restoreFuelActiveState() {
+      fuelButtons().forEach(function (button) {
+        const previousClass = button.getAttribute('data-ev-prev-class');
+        if (previousClass) {
+          button.className = previousClass;
+          button.removeAttribute('data-ev-prev-class');
+        }
+      });
+    }
+
     function setEvMode(enabled) {
-      evMode = Boolean(enabled);
+      const nextEvMode = Boolean(enabled);
+      if (nextEvMode && !evMode) {
+        hideFuelActiveState();
+      } else if (!nextEvMode && evMode) {
+        restoreFuelActiveState();
+      }
+
+      evMode = nextEvMode;
       evToggle.classList.toggle('active-cyan', evMode);
       connectorRow.hidden = !evMode;
       searchBtn.textContent = evMode ? ' Trova colonnine' : originalSearchText;
