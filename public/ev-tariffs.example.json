@@ -1,0 +1,31 @@
+{
+  "tariffs": [
+    {
+      "operator": "Esempio CPO",
+      "aliases": ["Esempio Charging", "Esempio Energia"],
+      "source": "Feed tariffario interno",
+      "updatedAt": "2026-05-11",
+      "prices": [
+        {
+          "label": "AC fino a 22 kW",
+          "maxPowerKw": 22,
+          "eurPerKwh": 0.69,
+          "note": "Sostituisci questi valori con il feed reale o rimuovi il file."
+        },
+        {
+          "label": "DC 22-150 kW",
+          "minPowerKw": 22.01,
+          "maxPowerKw": 150,
+          "eurPerKwh": 0.84,
+          "note": "Valore dimostrativo."
+        },
+        {
+          "label": "HPC oltre 150 kW",
+          "minPowerKw": 150.01,
+          "eurPerKwh": 0.94,
+          "note": "Valore dimostrativo."
+        }
+      ]
+    }
+  ]
+}
