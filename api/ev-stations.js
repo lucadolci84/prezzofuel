@@ -5,6 +5,16 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const MAX_RADIUS_KM = 80;
 const MAX_RESULTS = 100;
 
+// Fallback trasparente quando non c'e un listino puntuale per l'operatore.
+// Valori medi pay-per-use Italia da analisi MIMIT/BMTI aprile 2025:
+// AC 0,66 EUR/kWh, DC 0,80 EUR/kWh, HPC 0,86 EUR/kWh.
+const MARKET_AVERAGE_SOURCE = 'MIMIT/BMTI prezzo medio ricarica pubblica aprile 2025';
+const MARKET_AVERAGE_PRICES = {
+  ac: { label: 'Stima media AC', eurPerKwh: 0.66, minPowerKw: 0, maxPowerKw: 49.99 },
+  dc: { label: 'Stima media DC rapida', eurPerKwh: 0.80, minPowerKw: 50, maxPowerKw: 149.99 },
+  hpc: { label: 'Stima media HPC ultrarapida', eurPerKwh: 0.86, minPowerKw: 150, maxPowerKw: null },
+};
+
 const cache = globalThis.__prezzofuel_ev_cache ?? {
   ocm: new Map(),
   tariffs: { expiresAt: 0, rows: [], sources: [] },
@@ -274,6 +284,43 @@ function buildTariffCandidates(station, tariffs) {
   return candidates;
 }
 
+function hasStructuredPrice(candidates) {
+  return candidates.some((candidate) => (
+    Number.isFinite(candidate.eurPerKwh) && candidate.eurPerKwh > 0
+  ) || (
+    Number.isFinite(candidate.eurPerMinute) && candidate.eurPerMinute > 0
+  ));
+}
+
+function classifyStationPower(station) {
+  const maxPowerKw = Number(station.maxPowerKw || 0);
+  const hasDcConnector = (station.connections || []).some((connection) => {
+    const text = normalizeText(`${connection.type} ${connection.currentType} ${connection.level}`);
+    return /ccs|combo|chademo|dc|supercharger|tesla/.test(text);
+  });
+
+  if (maxPowerKw >= 150) return 'hpc';
+  if (maxPowerKw >= 50 || hasDcConnector) return 'dc';
+  return 'ac';
+}
+
+function buildMarketAverageCandidate(station) {
+  const tier = classifyStationPower(station);
+  const price = MARKET_AVERAGE_PRICES[tier] || MARKET_AVERAGE_PRICES.ac;
+  return {
+    source: MARKET_AVERAGE_SOURCE,
+    operator: station.operator || null,
+    label: price.label,
+    eurPerKwh: price.eurPerKwh,
+    eurPerMinute: null,
+    fixedFee: null,
+    parkingFee: null,
+    note: 'Stima media nazionale: non e un prezzo live della singola colonnina.',
+    updatedAt: '2025-04',
+    confidence: 'estimated-market-average',
+  };
+}
+
 function summarizePrice(candidates) {
   const eurPerKwh = candidates
     .map((x) => x.eurPerKwh)
@@ -292,7 +339,13 @@ function summarizePrice(candidates) {
       min,
       max,
       display: min === max ? `${min.toFixed(2)} €/kWh` : `${min.toFixed(2)}-${max.toFixed(2)} €/kWh`,
-      confidence: candidates.some((x) => x.confidence === 'matched-operator') ? 'indicative' : 'low',
+      confidence: candidates.some((x) => x.confidence === 'matched-operator')
+        ? 'indicative'
+        : candidates.some((x) => x.confidence === 'estimated-market-average')
+          ? 'estimated'
+          : 'low',
+      label: candidates.find((x) => Number.isFinite(x.eurPerKwh) && x.eurPerKwh === min)?.label || null,
+      source: candidates.find((x) => Number.isFinite(x.eurPerKwh) && x.eurPerKwh === min)?.source || null,
     };
   }
 
@@ -415,6 +468,9 @@ export default async function handler(req, res) {
           ...buildTariffCandidates(station, tariffData.rows),
           ...parseUsageCostText(station.usageCostText),
         ];
+        if (!hasStructuredPrice(tariffCandidates)) {
+          tariffCandidates.push(buildMarketAverageCandidate(station));
+        }
         const price = summarizePrice(tariffCandidates);
         return { ...station, price, tariffCandidates };
       })
@@ -431,11 +487,9 @@ export default async function handler(req, res) {
       count: results.length,
       sources: {
         stations: ['OpenChargeMap'],
-        prices: ['OpenChargeMap UsageCost', ...tariffData.sources],
+        prices: [MARKET_AVERAGE_SOURCE, 'OpenChargeMap UsageCost', ...tariffData.sources],
       },
-      pricingNote: tariffData.sources.length
-        ? 'Prezzi indicativi aggregati da feed configurati e note OpenChargeMap. Verificare sempre in app prima della ricarica.'
-        : 'OpenChargeMap espone talvolta note di costo, ma non un listino completo. Configura EV_TARIFFS_JSON o EV_TARIFFS_URL per arricchire i prezzi.',
+      pricingNote: null,
       results,
     });
   } catch (err) {
