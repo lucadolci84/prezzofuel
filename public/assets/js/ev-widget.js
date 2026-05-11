@@ -31,8 +31,9 @@
     let lastEvParams = null;
     let evMap = null;
     let evMarkerLayer = null;
+    let evMapTarget = null;
     let leafletPromise = null;
-    const originalMapWrapHtml = mapWrap ? mapWrap.innerHTML : '';
+    const originalResultsMap = document.getElementById('resultsMap');
     const originalMapWrapDisplay = mapWrap ? mapWrap.style.display : '';
 
     injectStyles();
@@ -240,11 +241,25 @@
       );
     }
 
+    function removeEvMapInstance() {
+      if (evMarkerLayer) {
+        try { evMarkerLayer.clearLayers(); } catch (err) {}
+        evMarkerLayer = null;
+      }
+      if (evMap) {
+        try { evMap.remove(); } catch (err) {}
+        evMap = null;
+      }
+      if (evMapTarget) {
+        evMapTarget.remove();
+        evMapTarget = null;
+      }
+    }
+
     function restoreOriginalMap() {
       if (!mapWrap) return;
-      evMap = null;
-      evMarkerLayer = null;
-      mapWrap.innerHTML = originalMapWrapHtml;
+      removeEvMapInstance();
+      if (originalResultsMap) originalResultsMap.style.display = '';
       mapWrap.style.display = originalMapWrapDisplay || 'none';
     }
 
@@ -255,15 +270,27 @@
 
     function ensureEvMapShell() {
       if (!mapWrap) {
-        resultsEl.insertAdjacentHTML('beforebegin', '<div id="mapWrap" class="map-wrap"></div>');
+        resultsEl.insertAdjacentHTML('beforebegin', '<div id="mapWrap" class="map-wrap"><div id="resultsMap" class="results-map"></div></div>');
         mapWrap = document.getElementById('mapWrap');
       }
       if (!mapWrap) return null;
-      if (!mapWrap.querySelector('#evChargingMap')) {
-        mapWrap.innerHTML = '\n          <div class="ev-map-card">\n            <div class="ev-map-head">\n              <div>\n                <span class="ev-map-kicker">Mappa colonnine</span>\n                <strong>Colonnine trovate vicino a te</strong>\n              </div>\n              <span id="evMapCount" class="pill"></span>\n            </div>\n            <div id="evChargingMap" class="ev-map"></div>\n          </div>\n        ';
+
+      // Manteniamo lo stesso involucro grafico usato per benzina/diesel/GPL/metano.
+      // Usiamo solo un div mappa separato per non interferire con l'istanza Leaflet
+      // originale, che vive nella closure dello script principale.
+      if (originalResultsMap) originalResultsMap.style.display = 'none';
+
+      evMapTarget = document.getElementById('evResultsMap');
+      if (!evMapTarget) {
+        evMapTarget = document.createElement('div');
+        evMapTarget.id = 'evResultsMap';
+        evMapTarget.className = 'results-map';
+        mapWrap.appendChild(evMapTarget);
       }
+
+      evMapTarget.style.display = 'block';
       mapWrap.style.display = 'block';
-      return mapWrap.querySelector('#evChargingMap');
+      return evMapTarget;
     }
 
     function loadLeaflet() {
@@ -271,15 +298,14 @@
       if (leafletPromise) return leafletPromise;
 
       leafletPromise = new Promise(function (resolve, reject) {
-        if (!document.getElementById('leafletCss')) {
+        if (!document.querySelector('link[href*="leaflet.css"]')) {
           const link = document.createElement('link');
-          link.id = 'leafletCss';
           link.rel = 'stylesheet';
           link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
           document.head.appendChild(link);
         }
 
-        const existing = document.getElementById('leafletJs');
+        const existing = document.querySelector('script[src*="leaflet.js"]');
         if (existing) {
           existing.addEventListener('load', function () { resolve(window.L); });
           existing.addEventListener('error', reject);
@@ -287,7 +313,6 @@
         }
 
         const script = document.createElement('script');
-        script.id = 'leafletJs';
         script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
         script.async = true;
         script.onload = function () { resolve(window.L); };
@@ -300,17 +325,48 @@
 
     function popupHtml(station) {
       const maps = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(String(station.lat) + ',' + String(station.lon));
-      const price = station.price && station.price.display ? station.price.display : 'Prezzo n.d.';
-      return '<strong>' + escapeHtml(station.title || 'Colonnina') + '</strong>'
-        + '<br>' + escapeHtml(station.address || '')
-        + '<br><strong>' + escapeHtml(price) + '</strong> · ' + escapeHtml(formatPower(station.maxPowerKw))
-        + '<br><a href="' + maps + '" target="_blank" rel="noopener">Apri navigatore</a>';
+      const price = station.price && station.price.display ? station.price.display : 'Prezzo non disponibile';
+      const title = station.title || 'Colonnina di ricarica';
+      const meta = [station.address || '', Number(station.distanceKm || 0).toFixed(1) + ' km']
+        .filter(Boolean)
+        .map(escapeHtml)
+        .join('<br>');
+      const power = formatPower(station.maxPowerKw);
+      return '\n        <div class="map-popup">\n          <div class="title">' + escapeHtml(title) + '</div>\n          <div class="meta">' + meta + '</div>\n          <div class="price">' + escapeHtml(price) + ' · ' + escapeHtml(power) + '</div>\n          <div class="meta"><a href="' + maps + '" target="_blank" rel="noopener">Apri navigatore</a></div>\n        </div>\n      ';
     }
 
-    function markerHtml(station) {
-      const price = station.price && station.price.display ? station.price.display : '';
-      const shortPrice = price.replace(' €/kWh', '').replace(' €/min', '');
-      return '<div class="ev-map-pin"><span>⚡</span><b>' + escapeHtml(shortPrice || '') + '</b></div>';
+    function numericEvPrice(station) {
+      const price = station && station.price ? station.price : null;
+      const n = Number(price && price.min);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function buildEvMapColorIndex(items) {
+      const prices = items
+        .map(numericEvPrice)
+        .filter(function (value) { return Number.isFinite(value); });
+      return {
+        min: prices.length ? Math.min.apply(null, prices) : null,
+        max: prices.length ? Math.max.apply(null, prices) : null
+      };
+    }
+
+    function markerClassForStation(station, colorIndex) {
+      const price = numericEvPrice(station);
+      if (!Number.isFinite(price) || colorIndex.min == null || colorIndex.max == null) return 'normal';
+      if (price === colorIndex.min) return 'best';
+      if (price === colorIndex.max && colorIndex.max > colorIndex.min) return 'worst';
+      return 'normal';
+    }
+
+    function createEvDivIcon(type) {
+      return L.divIcon({
+        className: '',
+        html: '<div class="price-pin ' + type + '"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+        popupAnchor: [0, -10]
+      });
     }
 
     async function renderEvMap(data) {
@@ -325,18 +381,16 @@
 
       const target = ensureEvMapShell();
       if (!target) return;
-      const countEl = document.getElementById('evMapCount');
-      if (countEl) countEl.textContent = items.length + ' punti';
 
       try {
         const L = await loadLeaflet();
         if (!L) return;
 
         if (!evMap) {
-          evMap = L.map(target, { scrollWheelZoom: false });
+          evMap = L.map(target, { scrollWheelZoom: true });
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
+            attribution: '&copy; OpenStreetMap'
           }).addTo(evMap);
           evMarkerLayer = L.layerGroup().addTo(evMap);
         } else {
@@ -344,41 +398,45 @@
         }
 
         const bounds = [];
+        const colorIndex = buildEvMapColorIndex(items);
+
+        if (data.center && Number.isFinite(Number(data.center.lat)) && Number.isFinite(Number(data.center.lon))) {
+          const centerLat = Number(data.center.lat);
+          const centerLon = Number(data.center.lon);
+          const centerMarker = L.circleMarker([centerLat, centerLon], {
+            radius: 8,
+            weight: 3,
+            color: '#111827',
+            fillColor: '#ffffff',
+            fillOpacity: 1
+          }).bindPopup('\n            <div class="map-popup">\n              <div class="title">Centro ricerca</div>\n            </div>\n          ');
+          centerMarker.addTo(evMarkerLayer);
+          bounds.push([centerLat, centerLon]);
+        }
+
         items.forEach(function (station) {
           const lat = Number(station.lat);
           const lon = Number(station.lon);
-          bounds.push([lat, lon]);
+          const markerType = markerClassForStation(station, colorIndex);
           const marker = L.marker([lat, lon], {
-            icon: L.divIcon({
-              className: '',
-              html: markerHtml(station),
-              iconSize: [76, 32],
-              iconAnchor: [38, 32],
-              popupAnchor: [0, -30]
-            })
-          });
-          marker.bindPopup(popupHtml(station));
+            icon: createEvDivIcon(markerType)
+          }).bindPopup(popupHtml(station));
           marker.addTo(evMarkerLayer);
+          bounds.push([lat, lon]);
         });
 
-        if (data.center && Number.isFinite(Number(data.center.lat)) && Number.isFinite(Number(data.center.lon))) {
-          const centerMarker = L.circleMarker([Number(data.center.lat), Number(data.center.lon)], {
-            radius: 7,
-            weight: 2,
-            fillOpacity: 0.8
-          }).bindPopup('Centro ricerca');
-          centerMarker.addTo(evMarkerLayer);
-          bounds.push([Number(data.center.lat), Number(data.center.lon)]);
+        if (!bounds.length) {
+          hideEvMap();
+          return;
         }
 
-        setTimeout(function () {
-          evMap.invalidateSize();
-          if (bounds.length === 1) {
-            evMap.setView(bounds[0], 14);
-          } else {
-            evMap.fitBounds(bounds, { padding: [26, 26] });
-          }
-        }, 80);
+        if (bounds.length === 1) {
+          evMap.setView(bounds[0], 14);
+        } else {
+          evMap.fitBounds(bounds, { padding: [30, 30] });
+        }
+
+        setTimeout(function () { evMap.invalidateSize(); }, 0);
       } catch (err) {
         hideEvMap();
       }
@@ -496,57 +554,9 @@
           background: rgba(56, 189, 248, .12);
           box-shadow: 0 4px 12px rgba(56, 189, 248, .08);
         }
-        .ev-map-card {
-          margin: 18px 0 18px;
-          padding: 14px;
-          border: 1px solid rgba(56, 189, 248, .16);
-          border-radius: 18px;
-          background: rgba(15, 23, 42, .45);
-          box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
-        }
-        .ev-map-head {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          margin-bottom: 12px;
-          color: #e2e8f0;
-        }
-        .ev-map-head strong {
-          display: block;
-          font-size: .98rem;
-        }
-        .ev-map-kicker {
-          display: block;
-          color: #38bdf8;
-          font-size: .7rem;
-          font-weight: 900;
-          letter-spacing: .08em;
-          text-transform: uppercase;
-          margin-bottom: 2px;
-        }
-        .ev-map {
-          min-height: 360px;
-          border-radius: 14px;
-          overflow: hidden;
-          background: #0f172a;
-          border: 1px solid rgba(148, 163, 184, .18);
-        }
-        .ev-map-pin {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          padding: 6px 8px;
-          border-radius: 999px;
-          background: linear-gradient(135deg, #38bdf8, #2563eb);
-          color: #fff;
-          font-size: 11px;
-          font-weight: 900;
-          box-shadow: 0 10px 24px rgba(37, 99, 235, .28);
-          white-space: nowrap;
-        }
-        .ev-map-pin span {
-          font-size: 12px;
+        #evResultsMap.results-map {
+          width: 100%;
+          height: 420px;
         }
         .leaflet-popup-content {
           color: #111827;
@@ -556,13 +566,6 @@
         @media (max-width: 760px) {
           .ev-connector-chip {
             width: 100%;
-          }
-          .ev-map {
-            min-height: 300px;
-          }
-          .ev-map-head {
-            align-items: flex-start;
-            flex-direction: column;
           }
         }
       `;
