@@ -68,6 +68,34 @@ function parseItalianNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+function dateTimestamp(value) {
+  if (!value) return 0;
+  const ts = new Date(value).getTime();
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function latestDateEntry(entries) {
+  return entries
+    .map((entry) => ({ ...entry, timestamp: dateTimestamp(entry.value) }))
+    .filter((entry) => entry.timestamp > 0)
+    .sort((a, b) => b.timestamp - a.timestamp)[0] || null;
+}
+
+function latestDateValue(values) {
+  const latest = latestDateEntry(values.map((value) => ({ value })));
+  return latest ? latest.value : null;
+}
+
+function openChargeMapUpdateInfo(row) {
+  return latestDateEntry([
+    { field: 'DateLastVerified', value: row?.DateLastVerified },
+    { field: 'DateLastStatusUpdate', value: row?.DateLastStatusUpdate },
+    { field: 'DateLastConfirmed', value: row?.DateLastConfirmed },
+    { field: 'DateLastModified', value: row?.DateLastModified },
+    { field: 'DateCreated', value: row?.DateCreated },
+  ]);
+}
+
 function parseUsageCostText(text) {
   const raw = String(text || '').trim();
   if (!raw) return [];
@@ -316,7 +344,7 @@ function buildMarketAverageCandidate(station) {
     fixedFee: null,
     parkingFee: null,
     note: 'Stima media nazionale: non e un prezzo live della singola colonnina.',
-    updatedAt: '2025-04',
+    updatedAt: '2025-04-01',
     confidence: 'estimated-market-average',
   };
 }
@@ -334,6 +362,7 @@ function summarizePrice(candidates) {
   if (eurPerKwh.length) {
     const min = eurPerKwh[0];
     const max = eurPerKwh[eurPerKwh.length - 1];
+    const bestCandidate = candidates.find((x) => Number.isFinite(x.eurPerKwh) && x.eurPerKwh === min);
     return {
       unit: 'EUR/kWh',
       min,
@@ -344,20 +373,25 @@ function summarizePrice(candidates) {
         : candidates.some((x) => x.confidence === 'estimated-market-average')
           ? 'estimated'
           : 'low',
-      label: candidates.find((x) => Number.isFinite(x.eurPerKwh) && x.eurPerKwh === min)?.label || null,
-      source: candidates.find((x) => Number.isFinite(x.eurPerKwh) && x.eurPerKwh === min)?.source || null,
+      label: bestCandidate?.label || null,
+      source: bestCandidate?.source || null,
+      updatedAt: bestCandidate?.updatedAt || null,
     };
   }
 
   if (eurPerMinute.length) {
     const min = eurPerMinute[0];
     const max = eurPerMinute[eurPerMinute.length - 1];
+    const bestCandidate = candidates.find((x) => Number.isFinite(x.eurPerMinute) && x.eurPerMinute === min);
     return {
       unit: 'EUR/min',
       min,
       max,
       display: min === max ? `${min.toFixed(2)} €/min` : `${min.toFixed(2)}-${max.toFixed(2)} €/min`,
       confidence: 'low',
+      label: bestCandidate?.label || null,
+      source: bestCandidate?.source || null,
+      updatedAt: bestCandidate?.updatedAt || null,
     };
   }
 
@@ -366,6 +400,9 @@ function summarizePrice(candidates) {
       unit: 'text',
       display: candidates[0].note || candidates[0].label || 'Prezzo non strutturato',
       confidence: 'text-only',
+      label: candidates[0].label || null,
+      source: candidates[0].source || null,
+      updatedAt: candidates[0].updatedAt || null,
     };
   }
 
@@ -401,6 +438,7 @@ function transformOcmStation(row, center, connectorFilters) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
 
   const title = String(address.Title || row?.OperatorInfo?.Title || 'Colonnina').trim();
+  const updateInfo = openChargeMapUpdateInfo(row);
   return {
     id: `ocm:${row.ID}`,
     ocmId: row.ID,
@@ -408,6 +446,11 @@ function transformOcmStation(row, center, connectorFilters) {
     title,
     operator: row?.OperatorInfo?.Title || null,
     usageCostText: row?.UsageCost || null,
+    updatedAt: updateInfo?.value || null,
+    updatedAtField: updateInfo?.field || null,
+    verifiedAt: row?.DateLastVerified || null,
+    statusUpdatedAt: row?.DateLastStatusUpdate || null,
+    createdAt: row?.DateCreated || null,
     address: [address.AddressLine1, address.Town, address.StateOrProvince, address.Postcode]
       .filter(Boolean)
       .join(', '),
@@ -477,6 +520,7 @@ export default async function handler(req, res) {
       .filter((station) => station.distanceKm <= radiusKm);
 
     sortResults(results, req.query.sort);
+    const latestStationsUpdatedAt = latestDateValue(results.map((station) => station.updatedAt));
 
     return json(res, 200, {
       ok: true,
@@ -485,8 +529,10 @@ export default async function handler(req, res) {
       radiusKm,
       connectors: [...connectorFilters],
       count: results.length,
+      updatedAt: latestStationsUpdatedAt,
       sources: {
         stations: ['OpenChargeMap'],
+        stationsUpdatedAt: latestStationsUpdatedAt,
         prices: [MARKET_AVERAGE_SOURCE, 'OpenChargeMap UsageCost', ...tariffData.sources],
       },
       pricingNote: null,

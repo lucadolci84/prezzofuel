@@ -25,10 +25,12 @@
     if (!panel || !fuelRow || !capEl || !radiusEl || !searchBtn || !geoBtn || !statusEl || !noticeEl || !resultsEl) return;
     if (document.getElementById('evUnifiedToggle')) return;
 
-    const originalSearchText = searchBtn.textContent;
+    const originalSearchHtml = searchBtn.innerHTML;
+    const evSearchHtml = '⚡ Trova colonnine';
     const originalSortOptions = sortSelect ? sortSelect.innerHTML : '';
     const fuelActiveClasses = ['active-green', 'active-blue', 'active-amber', 'active-cyan'];
     let evMode = false;
+    let evBusy = false;
     let lastEvParams = null;
     let evMap = null;
     let evMarkerLayer = null;
@@ -193,7 +195,7 @@ function switchFromEvToFuel(selectedButton) {
       evMode = nextEvMode;
       evToggle.classList.toggle('active-cyan', evMode);
       connectorRow.hidden = !evMode;
-      searchBtn.textContent = evMode ? ' Trova colonnine' : originalSearchText;
+      if (!evBusy) searchBtn.innerHTML = evMode ? evSearchHtml : originalSearchHtml;
       capEl.placeholder = evMode ? 'Es. 20121 oppure Via Roma 10, Milano' : 'Es. 20121 oppure Via Roma 10, Milano';
 
       if (sortSelect) {
@@ -251,14 +253,47 @@ function switchFromEvToFuel(selectedButton) {
       return Number.isFinite(n) && n > 0 ? n.toFixed(0) + ' kW' : 'n.d.';
     }
 
+
+    function formatEvDateTime(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) return '';
+      return date.toLocaleString('it-IT', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function renderEvUpdateText(value) {
+      const formatted = formatEvDateTime(value);
+      return formatted ? 'Aggiornamento dati: ' + formatted : 'Aggiornamento dati: n.d.';
+    }
+
     function selectedSort() {
       return sortSelect ? sortSelect.value : 'price';
+    }
+
+
+    function setEvBusy(busy, label) {
+      evBusy = Boolean(busy);
+      searchBtn.disabled = evBusy;
+      geoBtn.disabled = evBusy;
+
+      if (evBusy) {
+        searchBtn.innerHTML = '<span class="spinner"></span> ' + escapeHtml(label || 'Cerco colonnine...');
+      } else {
+        searchBtn.innerHTML = evMode ? evSearchHtml : originalSearchHtml;
+      }
     }
 
     async function runEvSearch(params) {
       const connectors = activeConnectors();
       if (!connectors.length) {
         setNotice('Seleziona almeno un tipo di ricarica, oppure lascia attivi AC/Type 2 e CCS.', 'warn');
+        setEvBusy(false);
         return;
       }
 
@@ -276,6 +311,7 @@ function switchFromEvToFuel(selectedButton) {
         const q = String(params.q || capEl.value || '').trim();
         if (!q) {
           setNotice('Inserisci un CAP, un indirizzo o usa la tua posizione.', 'warn');
+          setEvBusy(false);
           return;
         }
         query.set('q', q);
@@ -284,6 +320,7 @@ function switchFromEvToFuel(selectedButton) {
       lastEvParams = Object.assign({}, params, { radius: radius });
       resultsEl.innerHTML = '';
       clearNotice();
+      setEvBusy(true, 'Cerco colonnine...');
       setStatus('<span class="spinner"></span> Ricerca colonnine in corso...');
       if (sortBar) sortBar.style.display = 'none';
       if (mapWrap) mapWrap.style.display = 'none';
@@ -302,6 +339,8 @@ function switchFromEvToFuel(selectedButton) {
         setNotice(err.message || 'Errore durante la ricerca delle colonnine.', 'error');
         resultsEl.innerHTML = '';
         hideEvMap();
+      } finally {
+        setEvBusy(false);
       }
     }
 
@@ -311,6 +350,7 @@ function switchFromEvToFuel(selectedButton) {
         return;
       }
       clearNotice();
+      setEvBusy(true, 'Rilevo posizione...');
       setStatus('<span class="spinner"></span> Rilevamento posizione...');
       navigator.geolocation.getCurrentPosition(
         function (position) {
@@ -323,6 +363,7 @@ function switchFromEvToFuel(selectedButton) {
         function () {
           clearStatus();
           setNotice('Non riesco ad accedere alla posizione. Inserisci un CAP o indirizzo.', 'warn');
+          setEvBusy(false);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
@@ -532,7 +573,12 @@ function switchFromEvToFuel(selectedButton) {
     function renderEvResults(data) {
       const items = Array.isArray(data.results) ? data.results : [];
       if (sortBar) sortBar.style.display = items.length ? 'flex' : 'none';
-      if (countBadge) countBadge.textContent = items.length ? items.length + ' colonnine trovate' : '';
+      if (countBadge) {
+        const latestUpdate = formatEvDateTime(data.updatedAt || (data.sources && data.sources.stationsUpdatedAt));
+        countBadge.textContent = items.length
+          ? items.length + ' colonnine trovate' + (latestUpdate ? ' · ultimo aggiornamento dati: ' + latestUpdate : '')
+          : '';
+      }
 
       if (!items.length) {
         resultsEl.innerHTML = '<div class="empty">Nessuna colonnina trovata nel raggio selezionato.</div>';
@@ -547,8 +593,9 @@ function switchFromEvToFuel(selectedButton) {
         const status = station.status || 'n.d.';
         const power = formatPower(station.maxPowerKw);
         const title = station.title || 'Colonnina di ricarica';
+        const updatedText = renderEvUpdateText(station.updatedAt);
 
-        return '\n          <div class="card ' + (index === 0 ? 'best' : '') + '">\n            <div>\n              <div class="name">' + escapeHtml(title) + ' ' + operator + '</div>\n              <div class="addr">' + escapeHtml(station.address || '') + '</div>\n              <div class="meta">Fonte: ' + escapeHtml(station.source || 'OpenChargeMap') + ' · Stato: ' + escapeHtml(status) + ' · Potenza max: ' + escapeHtml(power) + '</div>\n              <div class="prices">' + priceHtml + connectorHtml + '</div>\n              ' + (station.usageCostText ? '<div class="meta">Nota costo: ' + escapeHtml(station.usageCostText) + '</div>' : '') + '\n            </div>\n            <div class="right">\n              <div class="dist">' + Number(station.distanceKm || 0).toFixed(1) + ' <span>km</span></div>\n              <a class="map" href="' + maps + '" target="_blank" rel="noopener">Mappa</a>\n            </div>\n          </div>\n        ';
+        return '\n          <div class="card ' + (index === 0 ? 'best' : '') + '">\n            <div>\n              <div class="name">' + escapeHtml(title) + ' ' + operator + '</div>\n              <div class="addr">' + escapeHtml(station.address || '') + '</div>\n              <div class="meta">Fonte: ' + escapeHtml(station.source || 'OpenChargeMap') + ' · Stato: ' + escapeHtml(status) + ' · Potenza max: ' + escapeHtml(power) + ' · ' + escapeHtml(updatedText) + '</div>\n              <div class="prices">' + priceHtml + connectorHtml + '</div>\n              ' + (station.usageCostText ? '<div class="meta">Nota costo: ' + escapeHtml(station.usageCostText) + '</div>' : '') + '\n            </div>\n            <div class="right">\n              <div class="dist">' + Number(station.distanceKm || 0).toFixed(1) + ' <span>km</span></div>\n              <a class="map" href="' + maps + '" target="_blank" rel="noopener">Mappa</a>\n            </div>\n          </div>\n        ';
       }).join('');
     }
 
@@ -569,7 +616,9 @@ function switchFromEvToFuel(selectedButton) {
       }
 
       const title = price.label || 'Prezzo ricarica';
-      return '\n        <div class="chip ' + cls + '" title="' + escapeHtml(price.source || '') + '">\n          <span>' + escapeHtml(title) + '</span>\n          <span class="val">' + escapeHtml(label) + '</span>\n          <span>' + escapeHtml(confidence) + '</span>\n        </div>\n      ';
+      const priceUpdated = formatEvDateTime(price.updatedAt);
+      const chipTitle = [price.source || '', priceUpdated ? 'Aggiornato: ' + priceUpdated : ''].filter(Boolean).join(' · ');
+      return '\n        <div class="chip ' + cls + '" title="' + escapeHtml(chipTitle) + '">\n          <span>' + escapeHtml(title) + '</span>\n          <span class="val">' + escapeHtml(label) + '</span>\n          <span>' + escapeHtml(confidence) + (priceUpdated ? ' · agg. ' + escapeHtml(priceUpdated) : '') + '</span>\n        </div>\n      ';
     }
 
     function renderEvConnections(station) {
