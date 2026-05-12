@@ -6,6 +6,9 @@ const DATA_URLS = {
 const globalCache = globalThis.__prezzofuel_cache ?? {
   dataset: {
     expiresAt: 0,
+    loadedAt: 0,
+    stale: false,
+    lastError: null,
     stations: [],
     prices: [],
   },
@@ -20,6 +23,82 @@ export function json(res, status, payload) {
   res.status(status).setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.send(JSON.stringify(payload));
+}
+
+export function publicError(err, fallback = "Servizio momentaneamente non disponibile") {
+  const raw = String(err?.message || err || "").trim();
+  const lower = raw.toLowerCase();
+
+  if (/ocm_api_key|api key|x-api-key/.test(lower)) {
+    return "Chiave OpenChargeMap mancante o non valida. In locale controlla .env.local e riavvia il server.";
+  }
+  if (/geocoding/.test(lower) && /http 429|too many|rate/.test(lower)) {
+    return "Il servizio di geocodifica ha raggiunto il limite temporaneo. Riprova tra qualche minuto.";
+  }
+  if (/openchargemap|poi/.test(lower) && /http 429|too many|rate/.test(lower)) {
+    return "OpenChargeMap ha limitato temporaneamente le richieste. Riprova tra qualche minuto.";
+  }
+  if (/errore di rete|fetch failed|econn|enotfound|etimedout|timeout|network/i.test(raw)) {
+    return "Non riesco a contattare il servizio dati esterno. Controlla la connessione e riprova.";
+  }
+  if (/risposta non json|risposta non valida|risposta inattesa|sospetta/.test(lower)) {
+    return "Il servizio dati esterno ha risposto in modo non valido. Riprova tra qualche minuto.";
+  }
+  if (/cap non trovato|indirizzo non trovato|inserisci/.test(lower)) {
+    return raw;
+  }
+  return raw || fallback;
+}
+
+function buildCacheMeta(scope, dataset) {
+  return {
+    scope,
+    ttlSeconds: Math.round(TTL_MS / 1000),
+    loadedAt: dataset.loadedAt ? new Date(dataset.loadedAt).toISOString() : null,
+    expiresAt: dataset.expiresAt ? new Date(dataset.expiresAt).toISOString() : null,
+    stale: Boolean(dataset.stale),
+    lastError: dataset.lastError || null,
+  };
+}
+
+export function datasetMeta() {
+  return buildCacheMeta("fuel-dataset", globalCache.dataset);
+}
+
+export function fuelDataQualityFromTimestamp(timestamp) {
+  const ts = Number(timestamp || 0);
+  if (!Number.isFinite(ts) || ts <= 0) {
+    return {
+      level: "unknown",
+      label: "Aggiornamento n.d.",
+      detail: "Data prezzo non disponibile",
+      ageHours: null,
+    };
+  }
+
+  const ageHours = Math.max(0, Math.round((Date.now() - ts) / 36e5));
+  if (ageHours <= 48) {
+    return {
+      level: "recent",
+      label: "Dato recente",
+      detail: "Prezzo comunicato nelle ultime 48 ore",
+      ageHours,
+    };
+  }
+  if (ageHours <= 168) {
+    return {
+      level: "verify",
+      label: "Dato da verificare",
+      detail: "Prezzo comunicato da più di 2 giorni",
+      ageHours,
+    };
+  }
+  return {
+    level: "stale",
+    label: "Dato vecchio",
+    detail: "Prezzo comunicato da oltre una settimana",
+    ageHours,
+  };
 }
 
 export function csvToRows(text) {
@@ -185,28 +264,41 @@ export async function loadDataset() {
     globalCache.dataset.stations.length &&
     globalCache.dataset.prices.length
   ) {
-    return globalCache.dataset;
+    return { ...globalCache.dataset, cache: datasetMeta() };
   }
 
-  const [stationsCsv, pricesCsv] = await Promise.all([
-    safeFetchText(DATA_URLS.stations, "CSV impianti"),
-    safeFetchText(DATA_URLS.prices, "CSV prezzi"),
-  ]);
+  try {
+    const [stationsCsv, pricesCsv] = await Promise.all([
+      safeFetchText(DATA_URLS.stations, "CSV impianti"),
+      safeFetchText(DATA_URLS.prices, "CSV prezzi"),
+    ]);
 
-  const stations = parseStationCsv(stationsCsv);
-  const prices = parsePriceCsv(pricesCsv);
+    const stations = parseStationCsv(stationsCsv);
+    const prices = parsePriceCsv(pricesCsv);
 
-  if (!stations.length || !prices.length) {
-    throw new Error("Dataset vuoto o non valido");
+    if (!stations.length || !prices.length) {
+      throw new Error("Dataset vuoto o non valido");
+    }
+
+    globalCache.dataset = {
+      expiresAt: Date.now() + TTL_MS,
+      loadedAt: Date.now(),
+      stale: false,
+      lastError: null,
+      stations,
+      prices,
+    };
+
+    return { ...globalCache.dataset, cache: datasetMeta() };
+  } catch (err) {
+    if (globalCache.dataset.stations.length && globalCache.dataset.prices.length) {
+      globalCache.dataset.stale = true;
+      globalCache.dataset.lastError = publicError(err);
+      globalCache.dataset.expiresAt = Date.now() + 60 * 1000;
+      return { ...globalCache.dataset, cache: datasetMeta() };
+    }
+    throw err;
   }
-
-  globalCache.dataset = {
-    expiresAt: Date.now() + TTL_MS,
-    stations,
-    prices,
-  };
-
-  return globalCache.dataset;
 }
 
 export async function geocodePlace(input) {
@@ -305,6 +397,7 @@ export function buildResults({ stations, prices, lat, lon, radiusKm, fuels }) {
     .filter(s => priceMap.has(s.id))
     .map(s => {
       const prezziStazione = priceMap.get(s.id).sort((a, b) => a.prezzo - b.prezzo);
+      const aggiornamentoPiuRecente = Math.max(...prezziStazione.map(x => x.timestamp));
       return {
         id: s.id,
         nome: s.bandiera || s.gestore || s.nome || "Impianto",
@@ -315,7 +408,8 @@ export function buildResults({ stations, prices, lat, lon, radiusKm, fuels }) {
         lon: s.lon,
         distanzaKm: Number(s.distanzaKm.toFixed(2)),
         migliorPrezzo: prezziStazione[0]?.prezzo ?? null,
-        aggiornamentoPiuRecente: Math.max(...prezziStazione.map(x => x.timestamp)),
+        aggiornamentoPiuRecente,
+        dataQuality: fuelDataQualityFromTimestamp(aggiornamentoPiuRecente),
         prezzi: prezziStazione,
       };
     });

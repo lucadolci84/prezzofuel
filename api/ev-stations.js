@@ -1,7 +1,8 @@
-import { geocodePlace, haversine, json } from './_lib.js';
+import { geocodePlace, haversine, json, publicError, csvToRows } from './_lib.js';
 
 const OCM_BASE_URL = 'https://api.openchargemap.io/v3/poi/';
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const FEED_CACHE_TTL_MS = 30 * 60 * 1000;
 const MAX_RADIUS_KM = 80;
 const MAX_RESULTS = 100;
 
@@ -18,6 +19,7 @@ const MARKET_AVERAGE_PRICES = {
 const cache = globalThis.__prezzofuel_ev_cache ?? {
   ocm: new Map(),
   tariffs: { expiresAt: 0, rows: [], sources: [] },
+  stationFeeds: new Map(),
 };
 globalThis.__prezzofuel_ev_cache = cache;
 
@@ -35,6 +37,79 @@ function normalizeText(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+}
+
+
+function normalizeKey(value) {
+  return normalizeText(value).replace(/\s+/g, '_');
+}
+
+function pickField(row, names) {
+  if (!row || typeof row !== 'object') return null;
+  const directKeys = Object.keys(row);
+  const normalizedMap = new Map(directKeys.map((key) => [normalizeKey(key), key]));
+  for (const name of names) {
+    const direct = row[name];
+    if (direct !== undefined && direct !== null && String(direct).trim() !== '') return direct;
+    const normalized = normalizeKey(name);
+    const key = normalizedMap.get(normalized);
+    if (key && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') return row[key];
+  }
+  return null;
+}
+
+function parseMaybeNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const text = String(value).trim().replace(',', '.').replace(/[^0-9.\-]/g, '');
+  const n = Number(text);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseOperationalFromText(value) {
+  if (value === true || value === false) return value;
+  const text = normalizeText(value);
+  if (!text) return null;
+  if (/fuori servizio|out of service|offline|non operativo|non disponibile|guasto|in manutenzione|unavailable|inoperative/.test(text)) return false;
+  if (/operativo|available|disponibile|active|attivo|in servizio|working|ok/.test(text)) return true;
+  return null;
+}
+
+function parseExternalDate(row) {
+  return pickField(row, [
+    'updatedAt', 'updated_at', 'lastUpdated', 'last_updated', 'data_aggiornamento',
+    'dataAggiornamento', 'dateLastUpdated', 'dateLastModified', 'DateLastModified',
+    'DateLastVerified', 'DateLastStatusUpdate', 'createdAt', 'data_inserimento'
+  ]);
+}
+
+function parseExternalLatLon(row) {
+  const geometry = row?.geometry || row?.Geometry || null;
+  if (geometry && Array.isArray(geometry.coordinates) && geometry.coordinates.length >= 2) {
+    const lon = parseMaybeNumber(geometry.coordinates[0]);
+    const lat = parseMaybeNumber(geometry.coordinates[1]);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) return { lat, lon };
+  }
+  if (geometry && (geometry.x !== undefined || geometry.y !== undefined)) {
+    const lon = parseMaybeNumber(geometry.x);
+    const lat = parseMaybeNumber(geometry.y);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) return { lat, lon };
+  }
+
+  const lat = parseMaybeNumber(pickField(row, ['lat', 'latitude', 'latitudine', 'y', 'LAT', 'LATITUDINE']));
+  const lon = parseMaybeNumber(pickField(row, ['lon', 'lng', 'longitude', 'longitudine', 'x', 'LON', 'LONGITUDINE']));
+  if (Number.isFinite(lat) && Number.isFinite(lon)) return { lat, lon };
+  return null;
+}
+
+function stationSourcesFor(station) {
+  if (Array.isArray(station.sources) && station.sources.length) return station.sources;
+  return [station.source || 'Fonte esterna'].filter(Boolean);
+}
+
+function stationSourceLinksFor(station) {
+  if (Array.isArray(station.sourceLinks) && station.sourceLinks.length) return station.sourceLinks;
+  const sources = stationSourcesFor(station);
+  return sources.map((name) => ({ name, url: station.sourceUrl || null }));
 }
 
 function parseConnectorFilters(raw) {
@@ -398,6 +473,263 @@ async function fetchOpenChargeMap({ lat, lon, radiusKm, maxResults }) {
   return rows;
 }
 
+
+function stationFeedSources() {
+  const configured = [];
+  const add = (name, value) => {
+    String(value || '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .forEach((url) => configured.push({ name, url }));
+  };
+
+  add('Feed colonnine', process.env.EV_STATIONS_URL || process.env.EV_STATIONS_URLS);
+  add('PUN / feed nazionale', process.env.PUN_STATIONS_URL || process.env.PUN_EV_STATIONS_URL);
+  add('Plenitude', process.env.PLENITUDE_STATIONS_URL || process.env.BECHARGE_STATIONS_URL);
+  add('Electromaps', process.env.ELECTROMAPS_STATIONS_URL);
+
+  return configured;
+}
+
+function asStationArrayPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.stations)) return payload.stations;
+  if (Array.isArray(payload?.results)) return payload.results;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.features)) {
+    return payload.features.map((feature) => ({
+      ...(feature.properties || {}),
+      ...(feature.attributes || {}),
+      geometry: feature.geometry || null,
+    }));
+  }
+  if (Array.isArray(payload?.features?.features)) return asStationArrayPayload(payload.features);
+  return [];
+}
+
+function csvPayloadToObjects(text) {
+  const rows = csvToRows(text);
+  if (rows.length < 2) return [];
+  const headers = rows[0].map((h) => String(h || '').trim());
+  return rows.slice(1).map((cells) => {
+    const obj = {};
+    headers.forEach((header, index) => {
+      obj[header] = cells[index] ?? '';
+    });
+    return obj;
+  });
+}
+
+async function fetchStationFeed(source) {
+  const cacheKey = `${source.name}:${source.url}`;
+  const cached = cache.stationFeeds.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached;
+
+  const response = await fetch(source.url, {
+    headers: {
+      Accept: 'application/json, text/csv, text/plain;q=0.9, */*;q=0.8',
+      'User-Agent': 'PrezzoFuel/1.0 EV station feed aggregator',
+    },
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`${source.name}: HTTP ${response.status}`);
+
+  let rows = [];
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  if (contentType.includes('json') || /^[\s\r\n]*[\[{]/.test(text)) {
+    rows = asStationArrayPayload(JSON.parse(text));
+  } else {
+    rows = csvPayloadToObjects(text);
+  }
+
+  const payload = { expiresAt: Date.now() + FEED_CACHE_TTL_MS, rows, source };
+  cache.stationFeeds.set(cacheKey, payload);
+  return payload;
+}
+
+function normalizeExternalStation(row, center, source) {
+  const normalizedRow = row?.attributes || row?.properties || row || {};
+  const coords = parseExternalLatLon(normalizedRow);
+  if (!coords) return null;
+
+  const title = String(pickField(normalizedRow, [
+    'title', 'name', 'nome', 'nome_stazione', 'denominazione', 'stationName',
+    'indirizzo', 'address', 'ubicazione', 'locationName'
+  ]) || 'Colonnina').trim();
+
+  const operator = String(pickField(normalizedRow, [
+    'operator', 'gestore', 'cpo', 'network', 'provider', 'operatore', 'brand', 'societa', 'società'
+  ]) || '').trim() || null;
+
+  const address = [
+    pickField(normalizedRow, ['address', 'indirizzo', 'via', 'ubicazione', 'location']),
+    pickField(normalizedRow, ['town', 'comune', 'city', 'municipality']),
+    pickField(normalizedRow, ['province', 'provincia', 'state', 'regione']),
+    pickField(normalizedRow, ['postcode', 'cap', 'zip'])
+  ].filter(Boolean).join(', ');
+
+  const connectorType = String(pickField(normalizedRow, [
+    'connector', 'connectors', 'tipo_connettore', 'tipoPresa', 'tipo_presa',
+    'connectionType', 'standard', 'presa'
+  ]) || '').trim() || null;
+  const currentType = String(pickField(normalizedRow, ['currentType', 'corrente', 'alimentazione', 'tipo_alimentazione']) || '').trim() || null;
+  const powerKw = parseMaybeNumber(pickField(normalizedRow, [
+    'powerKw', 'power_kw', 'potenza', 'potenza_kw', 'potenzaMassima', 'potenza_massima',
+    'maxPowerKw', 'max_power_kw', 'kw'
+  ]));
+  const statusRaw = pickField(normalizedRow, ['status', 'stato', 'availability', 'disponibilita', 'disponibilità']);
+  const isOperational = parseOperationalFromText(statusRaw);
+
+  const connection = {
+    id: pickField(normalizedRow, ['connectorId', 'id_connettore', 'socketId']) || null,
+    type: connectorType,
+    currentType,
+    status: statusRaw ? String(statusRaw) : null,
+    isOperational,
+    level: null,
+    amps: parseMaybeNumber(pickField(normalizedRow, ['amps', 'ampere'])) || null,
+    voltage: parseMaybeNumber(pickField(normalizedRow, ['voltage', 'volt', 'tensione'])) || null,
+    powerKw,
+    quantity: parseMaybeNumber(pickField(normalizedRow, ['quantity', 'numero_prese', 'num_connectors'])) || null,
+  };
+
+  const idRaw = pickField(normalizedRow, ['id', 'stationId', 'station_id', 'id_stazione', 'codice', 'uid']);
+  const sourceUrl = pickField(normalizedRow, ['url', 'sourceUrl', 'link', 'scheda', 'detailUrl']) || null;
+  const updatedAt = parseExternalDate(normalizedRow);
+
+  return {
+    id: `${normalizeText(source.name) || 'feed'}:${idRaw || `${coords.lat},${coords.lon},${title}`}`,
+    title,
+    operator,
+    usageCostText: pickField(normalizedRow, ['usageCost', 'costo', 'tariffa', 'price', 'prezzo']) || null,
+    updatedAt,
+    updatedAtField: updatedAt ? 'feed' : null,
+    verifiedAt: null,
+    statusUpdatedAt: null,
+    createdAt: null,
+    address,
+    town: pickField(normalizedRow, ['town', 'comune', 'city']) || null,
+    province: pickField(normalizedRow, ['province', 'provincia', 'state']) || null,
+    postcode: pickField(normalizedRow, ['postcode', 'cap', 'zip']) || null,
+    lat: coords.lat,
+    lon: coords.lon,
+    distanceKm: Number(haversine(center.lat, center.lon, coords.lat, coords.lon).toFixed(2)),
+    status: statusRaw ? String(statusRaw) : null,
+    isOperational,
+    maxPowerKw: powerKw || null,
+    connections: connectorType || powerKw || statusRaw ? [connection] : [],
+    source: source.name,
+    sourceUrl,
+    sources: [source.name],
+    sourceLinks: [{ name: source.name, url: sourceUrl }],
+    externalRawSource: source.url,
+  };
+}
+
+async function loadExternalStations(center) {
+  const sources = stationFeedSources();
+  if (!sources.length) return { rows: [], sources: [], errors: [] };
+
+  const rows = [];
+  const loadedSources = [];
+  const errors = [];
+
+  for (const source of sources) {
+    try {
+      const payload = await fetchStationFeed(source);
+      loadedSources.push(source.name);
+      rows.push(...payload.rows
+        .map((row) => normalizeExternalStation(row, center, source))
+        .filter(Boolean));
+    } catch (err) {
+      errors.push({ source: source.name, error: publicError(err, `${source.name} non disponibile`) });
+      console.warn(`Feed colonnine non disponibile ${source.name}:`, err.message);
+    }
+  }
+
+  return { rows, sources: loadedSources, errors };
+}
+
+function mergeStationPair(a, b) {
+  const sourceLinks = [...stationSourceLinksFor(a), ...stationSourceLinksFor(b)];
+  const sourceNames = [...new Set([...stationSourcesFor(a), ...stationSourcesFor(b)])];
+  const connections = [...(a.connections || []), ...(b.connections || [])];
+  const latest = latestDateValue([a.updatedAt, b.updatedAt]);
+  const isOperational = stationOperationalValue({
+    isOperational: a.isOperational === true || b.isOperational === true ? true : (a.isOperational === false && b.isOperational === false ? false : null),
+    connections,
+  });
+
+  return {
+    ...a,
+    title: a.title && a.title !== 'Colonnina' ? a.title : b.title,
+    operator: a.operator || b.operator,
+    address: a.address || b.address,
+    town: a.town || b.town,
+    province: a.province || b.province,
+    postcode: a.postcode || b.postcode,
+    status: a.status || b.status,
+    isOperational,
+    updatedAt: latest,
+    updatedAtField: latest === a.updatedAt ? a.updatedAtField : b.updatedAtField,
+    maxPowerKw: Math.max(Number(a.maxPowerKw || 0), Number(b.maxPowerKw || 0)) || null,
+    connections,
+    source: sourceNames.join(' + '),
+    sources: sourceNames,
+    sourceUrl: a.sourceUrl || b.sourceUrl,
+    sourceLinks,
+    mergedSourcesCount: sourceNames.length,
+    usageCostText: a.usageCostText || b.usageCostText,
+  };
+}
+
+function shouldMergeStations(a, b) {
+  const distanceMeters = haversine(a.lat, a.lon, b.lat, b.lon) * 1000;
+  if (distanceMeters <= 60) return true;
+  const sameAddress = normalizeText(a.address) && normalizeText(a.address) === normalizeText(b.address);
+  const sameTitle = normalizeText(a.title) && normalizeText(a.title) === normalizeText(b.title);
+  return distanceMeters <= 180 && (sameAddress || sameTitle);
+}
+
+function mergeStations(stations) {
+  const merged = [];
+  for (const station of stations) {
+    const index = merged.findIndex((candidate) => shouldMergeStations(candidate, station));
+    if (index >= 0) {
+      merged[index] = mergeStationPair(merged[index], station);
+    } else {
+      merged.push(station);
+    }
+  }
+  return merged;
+}
+
+function buildExternalLookupLinks(center) {
+  const label = center?.query || center?.label || `${center.lat},${center.lon}`;
+  const encoded = encodeURIComponent(label);
+  return [
+    {
+      name: 'PUN Maps',
+      label: 'Verifica sulla mappa nazionale PUN',
+      url: 'https://www.piattaformaunicanazionale.it/',
+      note: 'Fonte istituzionale italiana: utile se OpenChargeMap non copre bene la zona.',
+    },
+    {
+      name: 'Electromaps',
+      label: 'Verifica su Electromaps',
+      url: `https://www.electromaps.com/en/charging-stations?search=${encoded}`,
+      note: 'Fonte community/commerciale: richiede verifica diretta sul sito o app.',
+    },
+    {
+      name: 'Plenitude On the Road',
+      label: 'Verifica su Plenitude On the Road',
+      url: 'https://eniplenitude.eu/',
+      note: 'Rete CPO: integrazione dati diretta solo con feed/API autorizzato.',
+    },
+  ];
+}
+
 function asArrayPayload(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.tariffs)) return payload.tariffs;
@@ -701,10 +1033,15 @@ function sortResults(results, sort) {
   return results;
 }
 
-function buildEvResults(ocmRows, center, filters, tariffRows, radiusKm, estimateKwh) {
-  const rows = ocmRows
+function buildEvResults(ocmRows, externalStations, center, filters, tariffRows, radiusKm, estimateKwh) {
+  const ocmStations = ocmRows
     .map((row) => transformOcmStation(row, center, filters.connectorFilters))
-    .filter(Boolean)
+    .filter(Boolean);
+
+  const rows = mergeStations([
+    ...ocmStations,
+    ...externalStations.filter((station) => (station.connections || []).some((connection) => connectorMatches(connection, filters.connectorFilters)) || !filters.connectorFilters.size),
+  ])
     .map((station) => {
       const stationWithOps = {
         ...station,
@@ -753,6 +1090,7 @@ export default async function handler(req, res) {
 
     const tariffData = await loadTariffs();
     const radiusPlan = buildRadiusSearchPlan(requestedRadiusKm);
+    const externalData = await loadExternalStations(center);
     let results = [];
     let radiusKm = requestedRadiusKm;
     let ocmRows = [];
@@ -762,6 +1100,7 @@ export default async function handler(req, res) {
       ocmRows = await fetchOpenChargeMap({ lat: center.lat, lon: center.lon, radiusKm: radiusCandidate, maxResults });
       results = buildEvResults(
         ocmRows,
+        externalData.rows,
         center,
         { connectorFilters, powerBands, operationalOnly },
         tariffData.rows,
@@ -792,14 +1131,30 @@ export default async function handler(req, res) {
       count: results.length,
       updatedAt: latestStationsUpdatedAt,
       sources: {
-        stations: ['OpenChargeMap'],
+        stations: [...new Set(['OpenChargeMap', ...externalData.sources])],
+        stationFeedErrors: externalData.errors,
         stationsUpdatedAt: latestStationsUpdatedAt,
         prices: [MARKET_AVERAGE_SOURCE, 'OpenChargeMap UsageCost', ...tariffData.sources],
       },
+      externalLookupLinks: buildExternalLookupLinks(center),
       pricingNote: 'Prezzi, stato e disponibilità EV sono indicativi: verifica sempre in app o sul provider prima di avviare la ricarica.',
+      cache: {
+        evStations: {
+          ttlSeconds: Math.round(CACHE_TTL_MS / 1000),
+          scope: externalData.sources.length ? 'openchargemap-plus-external-feeds' : 'openchargemap-poi'
+        },
+        tariffs: {
+          ttlSeconds: Math.round(CACHE_TTL_MS / 1000),
+          configuredSources: tariffData.sources.length
+        }
+      },
       results,
     });
   } catch (err) {
-    return json(res, 502, { ok: false, error: err.message || 'Errore ricerca colonnine' });
+    return json(res, 502, {
+      ok: false,
+      error: publicError(err, 'Errore ricerca colonnine'),
+      debug: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 }

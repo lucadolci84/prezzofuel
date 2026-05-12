@@ -591,7 +591,6 @@
 
     function markerClassForStation(station, colorIndex) {
       const price = numericEvPrice(station);
-      if (Number(station.recommendationScore || 0) >= 75) return 'best';
       if (!Number.isFinite(price) || colorIndex.min == null || colorIndex.max == null) return 'normal';
       if (price === colorIndex.min) return 'best';
       if (price === colorIndex.max && colorIndex.max > colorIndex.min) return 'worst';
@@ -768,10 +767,15 @@
       return '<span class="ev-badge ev-badge-' + escapeHtml(tone || 'neutral') + '"' + (title ? ' title="' + escapeHtml(title) + '"' : '') + '>' + escapeHtml(label) + '</span>';
     }
 
-    function renderEvBadges(station, index) {
+    function renderEvBadges(station, index, priceRole) {
       const badges = [];
       const score = Number(station.recommendationScore);
       const reasons = Array.isArray(station.recommendationReasons) ? station.recommendationReasons : [];
+      if (priceRole === 'best') {
+        badges.push(renderEvBadge('Più conveniente', 'best-value', 'Prezzo energia più basso tra i risultati mostrati'));
+      } else if (priceRole === 'worst') {
+        badges.push(renderEvBadge('Prezzo alto in zona', 'worst-value', 'Prezzo energia più alto tra i risultati mostrati'));
+      }
       if (index === 0 && Number.isFinite(score)) {
         const title = reasons.length ? 'Perché: ' + reasons.join(', ') : 'Punteggio basato su prezzo, distanza, potenza, aggiornamento e stato';
         badges.push(renderEvBadge('Consigliata', 'recommended', title));
@@ -845,11 +849,27 @@
 
     function renderEvSourceLine(station) {
       const price = station.price || {};
+      const sourceNames = Array.isArray(station.sources) && station.sources.length
+        ? station.sources
+        : [station.source || 'OpenChargeMap'];
       const parts = [];
-      parts.push('Dati stazione: ' + (station.source || 'OpenChargeMap'));
+      parts.push('Dati stazione: ' + sourceNames.join(' + '));
       if (station.updatedAt) parts.push('agg. ' + formatEvDateTime(station.updatedAt));
       if (price.source) parts.push('prezzo: ' + price.source);
       return '<div class="ev-source-line">' + escapeHtml(parts.join(' · ')) + '</div>';
+    }
+
+    function renderExternalLookupLinks(data) {
+      const links = Array.isArray(data.externalLookupLinks) ? data.externalLookupLinks : [];
+      if (!links.length) return '';
+      return '<div class="ev-external-links"><div class="ev-external-title">Altre verifiche utili</div>'
+        + links.map(function (link) {
+          return '<a href="' + escapeHtml(link.url) + '" target="_blank" rel="noopener">'
+            + '<strong>' + escapeHtml(link.label || link.name || 'Verifica') + '</strong>'
+            + (link.note ? '<span>' + escapeHtml(link.note) + '</span>' : '')
+            + '</a>';
+        }).join('')
+        + '</div>';
     }
 
     function renderEvResults(data) {
@@ -857,18 +877,21 @@
       if (sortBar) sortBar.style.display = items.length ? 'flex' : 'none';
       if (countBadge) {
         const latestUpdate = formatEvDateShort(data.updatedAt || (data.sources && data.sources.stationsUpdatedAt));
+        const sourceNames = data.sources && Array.isArray(data.sources.stations) ? data.sources.stations : ['OpenChargeMap'];
+        const sourceText = sourceNames.length > 1 ? ' · fonti: ' + sourceNames.length : ' · fonte: ' + sourceNames[0];
         const radiusText = data.autoExpanded ? ' · raggio esteso a ' + data.radiusKm + ' km' : ' · entro ' + data.radiusKm + ' km';
         countBadge.textContent = items.length
-          ? items.length + ' colonnine' + radiusText + (latestUpdate ? ' · dati OCM: ' + latestUpdate : '')
+          ? items.length + ' colonnine' + radiusText + sourceText + (latestUpdate ? ' · agg. ' + latestUpdate : '')
           : '';
       }
 
       if (!items.length) {
-        resultsEl.innerHTML = '<div class="empty">Nessuna colonnina trovata con i filtri selezionati. Prova ad aumentare il raggio, disattivare "solo operative" o rimuovere il filtro potenza.</div>';
+        resultsEl.innerHTML = '<div class="empty">Nessuna colonnina trovata con i filtri selezionati. Prova ad aumentare il raggio, disattivare "solo operative" o rimuovere il filtro potenza. Se nella zona sai che ci sono colonnine, verifica anche le mappe esterne: alcune reti non pubblicano dati aperti completi.</div>' + renderExternalLookupLinks(data);
         return;
       }
 
       const noteHtml = renderEvResultNote(data);
+      const colorIndex = buildEvMapColorIndex(items);
       resultsEl.innerHTML = noteHtml + items.map(function (station, index) {
         const maps = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(String(station.lat) + ',' + String(station.lon));
         const operator = station.operator ? '<span class="pill ev-operator-pill">' + escapeHtml(station.operator) + '</span>' : '';
@@ -876,8 +899,10 @@
         const detailsHtml = renderEvDetails(station);
         const sourceLine = renderEvSourceLine(station);
         const costNote = station.usageCostText ? '<div class="ev-cost-note"><strong>Nota costo OCM:</strong> ' + escapeHtml(station.usageCostText) + '</div>' : '';
+        const priceRole = markerClassForStation(station, colorIndex);
+        const roleClass = priceRole === 'best' ? ' best' : priceRole === 'worst' ? ' worst' : '';
 
-        return '\n          <div class="card ev-card ' + (index === 0 ? 'best' : '') + '">\n            <div class="ev-card-head">\n              <div class="ev-card-titleblock">\n                <div class="name">' + escapeHtml(title) + ' ' + operator + '</div>\n                <div class="addr">' + escapeHtml(station.address || 'Indirizzo non disponibile') + '</div>\n                ' + renderEvBadges(station, index) + '\n              </div>\n              <div class="ev-card-actions">\n                <div class="dist">' + formatDistanceKm(station.distanceKm) + ' <span>km</span></div>\n                <a class="map" href="' + maps + '" target="_blank" rel="noopener">Mappa</a>\n              </div>\n            </div>\n            ' + renderEvSummaryMetrics(station) + '\n            ' + renderConnectorSummary(station) + '\n            ' + costNote + '\n            ' + sourceLine + '\n            ' + detailsHtml + '\n          </div>\n        ';
+        return '\n          <div class="card ev-card' + roleClass + '">\n            <div class="ev-card-head">\n              <div class="ev-card-titleblock">\n                <div class="name">' + escapeHtml(title) + ' ' + operator + '</div>\n                <div class="addr">' + escapeHtml(station.address || 'Indirizzo non disponibile') + '</div>\n                ' + renderEvBadges(station, index, priceRole) + '\n              </div>\n              <div class="ev-card-actions">\n                <div class="dist">' + formatDistanceKm(station.distanceKm) + ' <span>km</span></div>\n                <a class="map" href="' + maps + '" target="_blank" rel="noopener">Mappa</a>\n              </div>\n            </div>\n            ' + renderEvSummaryMetrics(station) + '\n            ' + renderConnectorSummary(station) + '\n            ' + costNote + '\n            ' + sourceLine + '\n            ' + detailsHtml + '\n          </div>\n        ';
       }).join('');
     }
 
@@ -958,7 +983,15 @@
       const rows = connections.map(function (connection) {
         return '\n          <tr>\n            <td>' + escapeHtml(connection.type || 'Connettore') + '</td>\n            <td>' + escapeHtml(formatPower(connection.powerKw)) + '</td>\n            <td>' + escapeHtml(connection.currentType || 'n.d.') + '</td>\n            <td>' + escapeHtml(connection.status || 'stato n.d.') + '</td>\n          </tr>\n        ';
       }).join('');
-      const source = station.sourceUrl ? '<a href="' + escapeHtml(station.sourceUrl) + '" target="_blank" rel="noopener">Scheda OpenChargeMap</a>' : '';
+      const sourceLinks = Array.isArray(station.sourceLinks) && station.sourceLinks.length
+        ? station.sourceLinks
+        : (station.sourceUrl ? [{ name: station.source || 'Fonte dati', url: station.sourceUrl }] : []);
+      const source = sourceLinks.length ? sourceLinks.map(function (link) {
+        const label = link.name === 'OpenChargeMap' ? 'Scheda OpenChargeMap' : 'Fonte ' + link.name;
+        return link.url
+          ? '<a href="' + escapeHtml(link.url) + '" target="_blank" rel="noopener">' + escapeHtml(label) + '</a>'
+          : escapeHtml(link.name);
+      }).join(' · ') : '';
       const verified = station.verifiedAt ? 'Ultima verifica: ' + formatEvDateTime(station.verifiedAt) : '';
       const statusUpdate = station.statusUpdatedAt ? 'Aggiornamento stato: ' + formatEvDateTime(station.statusUpdatedAt) : '';
       const meta = [verified, statusUpdate, source].filter(Boolean).join(' · ');
@@ -1133,10 +1166,18 @@
           display: block;
           padding: 22px;
           border-radius: 22px;
+          border-left: 3px solid transparent;
         }
         .ev-card.card.best {
-          border-width: 1px;
+          border-color: rgba(56,189,248,.34);
+          border-left-color: #38bdf8;
+          background: linear-gradient(90deg, rgba(56,189,248,.07), rgba(15,23,42,.72) 22%, rgba(15,23,42,.72));
           box-shadow: 0 8px 28px rgba(0,0,0,.18);
+        }
+        .ev-card.card.worst {
+          border-color: rgba(239,68,68,.28);
+          border-left-color: #ef4444;
+          background: linear-gradient(90deg, rgba(239,68,68,.055), rgba(15,23,42,.72) 22%, rgba(15,23,42,.72));
         }
         .ev-card .ev-operator-pill {
           animation: none;
@@ -1189,10 +1230,16 @@
           font-weight: 750;
           white-space: nowrap;
         }
-        .ev-badge-recommended {
+        .ev-badge-recommended,
+        .ev-badge-best-value {
           color: #bae6fd;
           border-color: rgba(56,189,248,.34);
           background: rgba(56,189,248,.07);
+        }
+        .ev-badge-worst-value {
+          color: #fecaca;
+          border-color: rgba(239,68,68,.34);
+          background: rgba(239,68,68,.065);
         }
         .ev-badge-good,
         .ev-badge-score,
@@ -1291,6 +1338,31 @@
           border-radius: 0;
           background: transparent;
           border: 0;
+        }
+        .ev-external-links {
+          margin-top: 12px;
+          display: grid;
+          gap: 8px;
+        }
+        .ev-external-title {
+          color: #e2e8f0;
+          font-size: .86rem;
+          font-weight: 800;
+        }
+        .ev-external-links a {
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          padding: 10px 12px;
+          display: grid;
+          gap: 2px;
+          color: #e2e8f0;
+          text-decoration: none;
+          background: rgba(15, 23, 42, .35);
+        }
+        .ev-external-links span {
+          color: #94a3b8;
+          font-size: .78rem;
+          line-height: 1.35;
         }
         .ev-details {
           margin-top: 14px;

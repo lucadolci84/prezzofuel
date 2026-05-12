@@ -508,6 +508,19 @@
             display: block;
             padding: 22px;
             border-radius: 22px;
+            border-left: 3px solid transparent;
+        }
+
+        .fuel-card.card.best {
+            border-color: rgba(56,189,248,.34);
+            border-left-color: #38bdf8;
+            background: linear-gradient(90deg, rgba(56,189,248,.07), rgba(15,23,42,.72) 22%, rgba(15,23,42,.72));
+        }
+
+        .fuel-card.card.worst {
+            border-color: rgba(239,68,68,.28);
+            border-left-color: #ef4444;
+            background: linear-gradient(90deg, rgba(239,68,68,.055), rgba(15,23,42,.72) 22%, rgba(15,23,42,.72));
         }
 
         .fuel-card-head {
@@ -594,10 +607,18 @@
             border-color: rgba(255,255,255,.11);
         }
 
-        .fuel-card.best .fuel-badge:first-child {
+        .fuel-card.best .fuel-badge-good:first-child,
+        .fuel-badge-best-value {
             color: #bae6fd;
             border-color: rgba(56,189,248,.34);
             background: rgba(56,189,248,.07);
+        }
+
+        .fuel-card.worst .fuel-badge-bad,
+        .fuel-badge-worst-value {
+            color: #fecaca;
+            border-color: rgba(239,68,68,.34);
+            background: rgba(239,68,68,.065);
         }
 
         .fuel-details {
@@ -867,15 +888,17 @@
         }
 
             .price-pin.best {
-                background: #16a34a;
+                background: #38bdf8;
+                box-shadow: 0 0 0 4px rgba(56,189,248,.18), 0 2px 10px rgba(0,0,0,.18);
             }
 
             .price-pin.worst {
                 background: #dc2626;
+                box-shadow: 0 0 0 4px rgba(220,38,38,.15), 0 2px 10px rgba(0,0,0,.18);
             }
 
             .price-pin.normal {
-                background: #2563eb;
+                background: #64748b;
             }
 
         .map-popup {
@@ -1741,21 +1764,12 @@
 
                 const selectedSortFuel = getSelectedSortFuel(sort);
                 const TANK_CAPACITY = selectedTankLiters();
+                const colorIndex = buildMapColorIndex(sorted);
 
                 el.results.innerHTML = sorted.map((s, idx) => {
-                    let isBestStation = false;
-                    let isWorstStation = false;
-
-                    if (sort === "best") {
-                        isBestStation = idx === 0;
-                        isWorstStation = sorted.length > 1 && idx === sorted.length - 1;
-                    } else if (sort === "benzina" || sort === "diesel" || sort === "gpl" || sort === "metano") {
-                        isBestStation = idx === 0 && Number.isFinite(fuelPrice(s, sort));
-                        isWorstStation = false;
-                    } else if (sort === "dist" || sort === "updated") {
-                        isBestStation = false;
-                        isWorstStation = false;
-                    }
+                    const priceRole = markerClassForStation(s, colorIndex);
+                    const isBestStation = priceRole === "best";
+                    const isWorstStation = priceRole === "worst";
 
                     const stationTitle = s.flag || s.nome || "Impianto";
                     const fullAddr = [s.indirizzo, `${s.comune} (${s.prov})`].filter(Boolean).join(" — ");
@@ -1859,8 +1873,8 @@
                         ? `su ${TANK_CAPACITY} L di ${savingsInfo.fuelLabel}`
                         : "nessun risparmio rilevante";
                     const badges = [
-                        isBestStation ? renderFuelBadge("Miglior scelta", "good") : "",
-                        isWorstStation ? renderFuelBadge("Prezzo alto in zona", "bad") : "",
+                        isBestStation ? '<span class="fuel-badge fuel-badge-best-value">Più conveniente</span>' : "",
+                        isWorstStation ? '<span class="fuel-badge fuel-badge-worst-value">Prezzo alto in zona</span>' : "",
                         renderFuelBadge(quality.label || "Dato da verificare", qTone, quality.detail || ""),
                         displayed ? renderFuelBadge(displayed.self ? "Self" : "Servito", displayed.self ? "good" : "warn") : ""
                     ].filter(Boolean).join("");
@@ -1876,7 +1890,7 @@
                       <div>
                         <div class="name">
                           ${escapeHtml(stationTitle)}
-                          ${isBestStation ? '<span class="pill">SUPER PREZZO</span>' : ""}
+                          ${isBestStation ? '<span class="pill">Più conveniente</span>' : ""}
                         </div>
                         <div class="addr">${escapeHtml(fullAddr)}</div>
                         <div class="fuel-badges">${badges}</div>

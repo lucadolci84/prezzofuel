@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trasparenza dati | PrezzoFuel</title>
+  <meta name="description" content="Come PrezzoFuel usa e presenta dati carburanti, colonnine, aggiornamenti, stime e limiti delle fonti pubbliche." />
+  <link rel="icon" type="image/png" href="/assets/icons/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg" />
+  <style>
+    :root { --bg:#0b0d10; --panel:#12161b; --line:#242b33; --text:#eef2f7; --muted:#95a0ad; --accent:#38bdf8; --green:#22c55e; --amber:#f59e0b; --danger:#f87171; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: radial-gradient(circle at top center, rgba(56,189,248,.14), transparent 38%), #0b0d10; color:var(--text); }
+    main { max-width: 900px; margin: 0 auto; padding: 32px 18px 72px; }
+    a { color:#bae6fd; font-weight:800; text-decoration:none; }
+    .back { display:inline-flex; margin-bottom:24px; color:#bae6fd; }
+    .hero { text-align:center; margin: 18px 0 28px; }
+    h1 { margin:0; font-size: clamp(2rem, 5vw, 3.4rem); letter-spacing:-.03em; }
+    .subtitle { color:var(--muted); max-width: 680px; margin:16px auto 0; line-height:1.65; }
+    .grid { display:grid; gap:16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card { border:1px solid rgba(255,255,255,.07); border-radius:22px; background:linear-gradient(145deg,#13181e,#0e1217); padding:22px; box-shadow:0 8px 32px rgba(0,0,0,.22); }
+    .card h2 { margin:0 0 10px; font-size:1.05rem; }
+    .card p, .card li { color:#cbd5e1; line-height:1.65; font-size:.95rem; }
+    .card ul { margin:10px 0 0; padding-left:18px; }
+    .badge { display:inline-flex; align-items:center; padding:5px 10px; border-radius:999px; font-size:.75rem; font-weight:900; margin:4px 6px 4px 0; border:1px solid rgba(255,255,255,.1); }
+    .good { color:#86efac; background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.28); }
+    .warn { color:#fcd34d; background:rgba(245,158,11,.11); border-color:rgba(245,158,11,.25); }
+    .bad { color:#fca5a5; background:rgba(248,113,113,.10); border-color:rgba(248,113,113,.25); }
+    .full { grid-column: 1 / -1; }
+    footer { margin-top:34px; text-align:center; color:var(--muted); font-size:.8rem; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="/">← Torna alla ricerca</a>
+    <section class="hero">
+      <h1>Trasparenza dati</h1>
+      <p class="subtitle">PrezzoFuel prova a rendere confrontabili dati che arrivano da fonti diverse. Qui trovi come leggere prezzi, aggiornamenti, stime e avvisi mostrati nelle card.</p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Carburanti</h2>
+        <p>I prezzi di benzina, diesel, GPL e metano sono elaborati dai dataset pubblici MIMIT sugli impianti attivi e sui prezzi comunicati dagli esercenti.</p>
+        <ul>
+          <li>Il prezzo migliore è ordinato sui carburanti selezionati.</li>
+          <li>Il risparmio stimato usa i litri indicati nel form.</li>
+          <li>Il badge aggiornamento indica quanto è recente la comunicazione del prezzo.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Colonnine elettriche</h2>
+        <p>La fonte principale è OpenChargeMap. Il progetto supporta anche feed aggiuntivi autorizzati o open-data, ad esempio esportazioni PUN o feed di operatori, quando configurati nelle variabili ambiente.</p>
+        <ul>
+          <li>Se più fonti indicano la stessa colonnina, PrezzoFuel prova a unirle e mostra la provenienza del dato.</li>
+          <li>“Operativa” significa indicata come tale dalla fonte, non necessariamente disponibile in tempo reale.</li>
+          <li>Prezzi e stime EV vanno verificati nell’app o sul provider prima di ricaricare.</li>
+          <li>La ricerca può estendere automaticamente il raggio se non trova risultati e propone link di verifica esterni.</li>
+        </ul>
+      </article>
+
+      <article class="card full">
+        <h2>Come leggere i badge</h2>
+        <p>
+          <span class="badge good">Dato recente</span> aggiornamento generalmente affidabile.
+          <span class="badge warn">Dato da verificare</span> informazione utile ma non freschissima.
+          <span class="badge bad">Dato vecchio/incompleto</span> controlla prima di partire.
+        </p>
+        <p>
+          <span class="badge good">Tariffa indicativa</span> prezzo associato a operatore/feed.
+          <span class="badge warn">Stima media</span> prezzo medio usato quando manca un listino puntuale.
+          <span class="badge warn">Community</span> dato testuale o non strutturato da verificare.
+        </p>
+      </article>
+
+      <article class="card full">
+        <h2>Cache e disponibilità</h2>
+        <p>Per velocizzare la ricerca e ridurre errori o limiti API, PrezzoFuel mantiene una cache temporanea lato server. Se una fonte esterna non risponde ma esiste una copia valida recente, l’app può mostrare l’ultimo dato disponibile con un avviso.</p>
+      </article>
+    </section>
+
+    <footer>PrezzoFuel · Dati pubblici e stime trasparenti</footer>
+  </main>
+</body>
+</html>
