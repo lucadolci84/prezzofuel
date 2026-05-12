@@ -165,7 +165,43 @@
             flex-wrap: wrap;
             gap: 12px;
             margin-top: 20px;
-            margin-bottom: 24px;
+            margin-bottom: 14px;
+        }
+
+        .fuel-extra-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin: 0 0 22px;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 16px;
+            background: rgba(15, 23, 42, .34);
+            color: #cbd5e1;
+            font-size: .86rem;
+        }
+
+        .fuel-extra-row label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            color: #cbd5e1;
+            font-weight: 800;
+        }
+
+        .fuel-liters-input {
+            width: 78px !important;
+            min-height: 0;
+            padding: 8px 10px !important;
+            border-radius: 10px !important;
+        }
+
+        .fuel-extra-hint {
+            color: #94a3b8;
+            line-height: 1.4;
         }
 
         .fuel-toggle {
@@ -389,29 +425,26 @@
             border-radius: 20px;
             background: linear-gradient(145deg, #13181e, #0e1217);
             border: 1px solid var(--line);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            transition: transform 0.2s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+            transition: border-color 0.2s ease, background 0.2s ease;
         }
 
             .card:hover {
-                transform: translateY(-2px);
+                border-color: rgba(148, 163, 184, 0.28);
             }
 
-            /* Stile EROE */
             .card.best {
-                background: linear-gradient(145deg, #13181e, #0a1f12);
-                border: 2px solid var(--green);
-                box-shadow: 0 10px 40px var(--green-glow);
+                background: linear-gradient(145deg, #13181e, #0f171d);
+                border: 1px solid rgba(56, 189, 248, 0.38);
+                box-shadow: 0 8px 28px rgba(0,0,0,0.18);
                 position: relative;
                 overflow: hidden;
             }
-            /*.card.best::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--green); }*/
 
-            /* Stile NEMICO */
             .card.worst {
-                background: linear-gradient(145deg, #13181e, #1f0f0f);
-                border: 1px solid rgba(248, 113, 113, 0.3);
-                box-shadow: 0 10px 30px var(--red-glow);
+                background: linear-gradient(145deg, #13181e, #14171c);
+                border: 1px solid rgba(148, 163, 184, 0.24);
+                box-shadow: 0 4px 20px rgba(0,0,0,0.18);
             }
 
         .name {
@@ -426,16 +459,17 @@
         }
 
         .pill {
-            padding: 4px 10px;
+            padding: 4px 9px;
             border-radius: 999px;
-            background: var(--green);
-            color: #000;
-            font-size: .75rem;
+            background: rgba(56, 189, 248, 0.08);
+            color: #bae6fd;
+            border: 1px solid rgba(56, 189, 248, 0.22);
+            font-size: .68rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            box-shadow: 0 2px 10px var(--green-glow);
-            animation: pulse-glow 2s infinite;
+            box-shadow: none;
+            animation: none;
         }
 
         @keyframes pulse-glow {
@@ -470,6 +504,130 @@
             margin-top: 16px;
         }
 
+        .fuel-card.card {
+            display: block;
+            padding: 22px;
+            border-radius: 22px;
+        }
+
+        .fuel-card-head {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .fuel-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px 28px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,.08);
+        }
+
+        .fuel-metric {
+            min-width: 0;
+            padding: 0;
+            border: 0;
+            background: transparent;
+        }
+
+        .fuel-metric-label {
+            color: #94a3b8;
+            font-size: .68rem;
+            font-weight: 800;
+            letter-spacing: .045em;
+            text-transform: uppercase;
+        }
+
+        .fuel-metric-value {
+            margin-top: 5px;
+            color: #f8fafc;
+            font-size: 1.02rem;
+            line-height: 1.2;
+            font-weight: 850;
+            overflow-wrap: anywhere;
+        }
+
+        .fuel-metric-sub {
+            margin-top: 4px;
+            color: #94a3b8;
+            font-size: .74rem;
+            line-height: 1.35;
+        }
+
+        .fuel-metric-good,
+        .fuel-metric-warn,
+        .fuel-metric-bad {
+            border-color: transparent;
+            background: transparent;
+        }
+
+        .fuel-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 11px;
+        }
+
+        .fuel-badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,.11);
+            background: transparent;
+            color: #cbd5e1;
+            font-size: .7rem;
+            line-height: 1;
+            font-weight: 750;
+            white-space: nowrap;
+        }
+
+        .fuel-badge-good,
+        .fuel-badge-warn,
+        .fuel-badge-bad {
+            background: transparent;
+            color: #cbd5e1;
+            border-color: rgba(255,255,255,.11);
+        }
+
+        .fuel-card.best .fuel-badge:first-child {
+            color: #bae6fd;
+            border-color: rgba(56,189,248,.34);
+            background: rgba(56,189,248,.07);
+        }
+
+        .fuel-details {
+            margin-top: 14px;
+            color: #94a3b8;
+            font-size: .82rem;
+        }
+
+        .fuel-details summary {
+            cursor: pointer;
+            color: #cbd5e1;
+            font-weight: 750;
+            list-style-position: inside;
+        }
+
+        .fuel-details-body {
+            margin-top: 10px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,.07);
+            border-radius: 0;
+            background: transparent;
+        }
+
+        .fuel-source-line {
+            margin-top: 10px;
+            color: #94a3b8;
+            font-size: .76rem;
+            line-height: 1.45;
+        }
+
         .chip {
             min-width: 130px;
             padding: 12px 16px;
@@ -481,30 +639,17 @@
             align-items: flex-start;
         }
 
-            .chip.green {
-                background: rgba(34,197,94,.10);
-                border-color: rgba(34,197,94,.30);
-                box-shadow: inset 0 0 20px rgba(34,197,94,.05);
-            }
-
-            .chip.blue {
-                background: rgba(96,165,250,.10);
-                border-color: rgba(96,165,250,.30);
-            }
-
-            .chip.amber {
-                background: rgba(245,158,11,.10);
-                border-color: rgba(245,158,11,.30);
-            }
-
-            /* Colore per il chip del prezzo peggiore */
+            .chip.green,
+            .chip.blue,
+            .chip.amber,
             .chip.danger {
-                background: rgba(248, 113, 113, 0.08);
-                border-color: rgba(248, 113, 113, 0.25);
+                background: rgba(15,23,42,.38);
+                border-color: rgba(255,255,255,.09);
+                box-shadow: none;
             }
 
                 .chip.danger .val {
-                    color: #fca5a5;
+                    color: #e2e8f0;
                 }
 
         .badges-container {
@@ -578,6 +723,7 @@
                 background: var(--accent);
                 color: #000;
             }
+
 
         footer {
             margin-top: 6rem;
@@ -661,8 +807,12 @@
                 }
 
         @media (max-width: 760px) {
-            .grid, .card {
+            .grid, .card, .fuel-card-head {
                 grid-template-columns: 1fr;
+            }
+
+            .fuel-summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             .right {
@@ -680,6 +830,12 @@
 
             .actions {
                 flex-direction: column;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .fuel-summary-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -899,6 +1055,11 @@
                 <div class="fuel-toggle active-amber" data-fuel="metano"><span class="dot"></span>Metano</div>
             </div>
 
+            <div class="fuel-extra-row" id="fuelExtraRow">
+                <label for="fuelLitersEstimate">Stima risparmio su <input id="fuelLitersEstimate" class="fuel-liters-input" type="number" min="5" max="120" step="5" value="50"> L</label>
+                <span class="fuel-extra-hint">Il risparmio è calcolato sui litri indicati e sui prezzi disponibili nella zona.</span>
+            </div>
+
             <div class="actions">
                 <button class="primary" id="searchBtn">🚀 Trova il Risparmio</button>
                 <button class="secondary" id="geoBtn">📍 Usa la mia posizione</button>
@@ -967,6 +1128,7 @@
                 <a href="/kit-emergenza-auto.html">Kit emergenza auto</a>
                 <a href="/accessori-viaggi-auto.html">Accessori per viaggi lunghi</a>
                 <a href="/organizzazione-bagagliaio.html">Organizzazione bagagliaio</a>
+                <a href="/trasparenza-dati.html">Trasparenza dati</a>
             </div>
 
             <div class="seo-cities-wrapper">
@@ -1047,11 +1209,68 @@
                 countBadge: document.getElementById("countBadge"),
                 sortSelect: document.getElementById("sortSelect"),
                 mapWrap: document.getElementById("mapWrap"),
-                resultsMap: document.getElementById("resultsMap")
+                resultsMap: document.getElementById("resultsMap"),
+                litri: document.getElementById("fuelLitersEstimate")
             };
 
             const fuelColors = { benzina: "green", diesel: "blue", gpl: "amber", metano: "amber", hvo: "blue" };
             const fuelLabels = { benzina: "Benzina", diesel: "Diesel", gpl: "GPL", metano: "Metano", hvo: "HVO" };
+            const PREF_KEY = "prezzofuel.preferences.v3";
+
+            function readPreferences() {
+                try {
+                    return JSON.parse(localStorage.getItem(PREF_KEY) || "{}");
+                } catch {
+                    return {};
+                }
+            }
+
+            function writePreferences(patch = {}) {
+                try {
+                    const current = readPreferences();
+                    const next = {
+                        ...current,
+                        ...patch,
+                        fuels: [...state.activeFuels],
+                        radius: el.raggio.value,
+                        liters: selectedTankLiters(),
+                        sort: el.sortSelect.value,
+                        lastQuery: el.cap.value.trim()
+                    };
+                    localStorage.setItem(PREF_KEY, JSON.stringify(next));
+                } catch {
+                    // Preferenze non disponibili: non bloccare la ricerca.
+                }
+            }
+
+            function selectedTankLiters() {
+                const value = Number(el.litri && el.litri.value);
+                if (!Number.isFinite(value) || value <= 0) return 50;
+                return Math.max(5, Math.min(120, value));
+            }
+
+            function updateFuelToggleClass(node) {
+                const fuel = node.dataset.fuel;
+                node.className = state.activeFuels.has(fuel)
+                    ? "fuel-toggle active-" + (fuelColors[fuel] || "green")
+                    : "fuel-toggle";
+            }
+
+            function restorePreferences() {
+                const prefs = readPreferences();
+                if (prefs.radius && el.raggio) el.raggio.value = prefs.radius;
+                if (prefs.liters && el.litri) el.litri.value = prefs.liters;
+                if (prefs.sort && el.sortSelect && Array.from(el.sortSelect.options).some(o => o.value === prefs.sort)) {
+                    el.sortSelect.value = prefs.sort;
+                }
+                if (Array.isArray(prefs.fuels) && prefs.fuels.length) {
+                    state.activeFuels = new Set(prefs.fuels.filter(fuel => fuelLabels[fuel]));
+                    document.querySelectorAll(".fuel-toggle[data-fuel]").forEach(updateFuelToggleClass);
+                }
+                const params = new URLSearchParams(window.location.search);
+                const hasUrlQuery = params.has("cap") || params.has("q");
+                if (!hasUrlQuery && prefs.lastQuery && !el.cap.value) el.cap.value = prefs.lastQuery;
+            }
 
             document.querySelectorAll(".fuel-toggle").forEach(node => {
                 node.addEventListener("click", () => toggleFuel(node));
@@ -1059,18 +1278,29 @@
 
             el.searchBtn.addEventListener("click", searchByQuery);
             el.geoBtn.addEventListener("click", searchByBrowserLocation);
-            el.sortSelect.addEventListener("change", renderResults);
+            el.sortSelect.addEventListener("change", () => { writePreferences(); renderResults(); });
             el.cap.addEventListener("keydown", e => { if (e.key === "Enter") searchByQuery(); });
+            el.raggio.addEventListener("change", () => writePreferences());
+            if (el.litri) {
+                el.litri.addEventListener("change", () => {
+                    writePreferences();
+                    if (state.risultati.length) renderResults();
+                });
+            }
+
+            restorePreferences();
 
             function toggleFuel(node) {
                 const fuel = node.dataset.fuel;
                 if (state.activeFuels.has(fuel)) {
                     state.activeFuels.delete(fuel);
                     node.className = "fuel-toggle";
+                    writePreferences();
                     return;
                 }
                 state.activeFuels.add(fuel);
                 node.className = `fuel-toggle active-${fuelColors[fuel] || "green"}`;
+                writePreferences();
             }
 
             function setBusy(busy) {
@@ -1191,20 +1421,83 @@
             }
 
             function latestPriceDate(station) {
-                return Math.max(...station.priceList.map(p => parseItalianDateTime(p.dt)));
+                return Number(station.aggiornamentoPiuRecente || 0) || Math.max(...station.priceList.map(p => parseItalianDateTime(p.dt)));
+            }
+
+            function formatFuelDate(timestamp) {
+                const ts = Number(timestamp || 0);
+                if (!Number.isFinite(ts) || ts <= 0) return "n.d.";
+                return new Date(ts).toLocaleString("it-IT", {
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                });
+            }
+
+            function fuelQuality(station) {
+                if (station.dataQuality) return station.dataQuality;
+                const ts = latestPriceDate(station);
+                if (!ts) return { level: "unknown", label: "Aggiornamento n.d.", detail: "Data prezzo non disponibile" };
+                const ageHours = Math.max(0, Math.round((Date.now() - ts) / 36e5));
+                if (ageHours <= 48) return { level: "recent", label: "Dato recente", detail: "Comunicazione nelle ultime 48 ore" };
+                if (ageHours <= 168) return { level: "verify", label: "Dato da verificare", detail: "Comunicazione da più di 2 giorni" };
+                return { level: "stale", label: "Dato vecchio", detail: "Comunicazione da oltre una settimana" };
+            }
+
+            function qualityTone(level) {
+                if (level === "recent") return "good";
+                if (level === "verify" || level === "unknown") return "warn";
+                return "bad";
+            }
+
+            function formatEuroAmount(value) {
+                const n = Number(value);
+                return Number.isFinite(n) ? n.toLocaleString("it-IT", { style: "currency", currency: "EUR" }) : "n.d.";
+            }
+
+            function renderFuelMetric(label, value, sub, tone = "neutral") {
+                return '<div class="fuel-metric fuel-metric-' + escapeHtml(tone) + '">' +
+                    '<div class="fuel-metric-label">' + escapeHtml(label) + '</div>' +
+                    '<div class="fuel-metric-value">' + escapeHtml(value || "n.d.") + '</div>' +
+                    (sub ? '<div class="fuel-metric-sub">' + escapeHtml(sub) + '</div>' : '') +
+                    '</div>';
+            }
+
+            function renderFuelBadge(label, tone = "neutral", title = "") {
+                return '<span class="fuel-badge fuel-badge-' + escapeHtml(tone) + '"' +
+                    (title ? ' title="' + escapeHtml(title) + '"' : '') + '>' +
+                    escapeHtml(label) + '</span>';
+            }
+
+            function friendlyErrorMessage(message, fallback = "Impossibile completare la ricerca.") {
+                const raw = String(message || "").trim();
+                const lower = raw.toLowerCase();
+                if (!raw) return fallback;
+                if (lower.includes("failed to fetch") || lower.includes("network") || lower.includes("errore di rete")) {
+                    return "Non riesco a contattare il servizio dati. Controlla la connessione e riprova.";
+                }
+                if (lower.includes("risposta non valida") || lower.includes("non json")) {
+                    return "Il servizio dati ha risposto in modo non valido. Riprova tra qualche minuto.";
+                }
+                if (lower.includes("rate") || lower.includes("429")) {
+                    return "Troppe richieste al servizio dati. Attendi qualche minuto e riprova.";
+                }
+                return raw;
             }
 
             async function safeFetchJson(url, label = "servizio") {
                 let response;
                 try {
-                    response = await fetch(url);
-                } catch {
-                    throw new Error(`${label}: errore di rete`);
+                    response = await fetch(url, { headers: { Accept: "application/json" } });
+                } catch (err) {
+                    throw new Error(friendlyErrorMessage(err.message, `${label}: errore di rete`));
                 }
 
+                const text = await response.text();
                 let data;
                 try {
-                    data = await response.json();
+                    data = text ? JSON.parse(text) : {};
                 } catch {
                     throw new Error(`${label}: risposta non valida`);
                 }
@@ -1226,6 +1519,7 @@
                 const data = await safeFetchJson(`${API_BASE}/api/${endpoint}?${qs.toString()}`, "backend");
 
                 state.lastDataSource = data.source || "backend";
+                state.lastWarning = data.warning || null;
 
                 state.searchCenter =
                     mode === "coords"
@@ -1242,6 +1536,8 @@
                     lat: x.lat,
                     lon: x.lon,
                     dist: x.distanzaKm,
+                    aggiornamentoPiuRecente: x.aggiornamentoPiuRecente || null,
+                    dataQuality: x.dataQuality || null,
                     priceList: (x.prezzi || []).map(p => ({
                         tipo: p.tipo,
                         prezzo: p.prezzo,
@@ -1444,7 +1740,7 @@
                     `Trovate <strong>${sorted.length} stazioni</strong> in zona ordinate per <strong>${sortLabels[sort] || sort}</strong>`;
 
                 const selectedSortFuel = getSelectedSortFuel(sort);
-                const TANK_CAPACITY = 50;
+                const TANK_CAPACITY = selectedTankLiters();
 
                 el.results.innerHTML = sorted.map((s, idx) => {
                     let isBestStation = false;
@@ -1463,8 +1759,7 @@
 
                     const stationTitle = s.flag || s.nome || "Impianto";
                     const fullAddr = [s.indirizzo, `${s.comune} (${s.prov})`].filter(Boolean).join(" — ");
-                    const latest = Math.max(...s.priceList.map(p => parseItalianDateTime(p.dt)));
-                    const fresh = latest && (Date.now() - latest < 172800000);
+                    const latest = latestPriceDate(s);
 
                     let savingsInfo = null;
 
@@ -1547,35 +1842,65 @@
 
                     badgesHtml += "</div>";
 
+                    const displayed = getStationDisplayedPrice(s);
+                    const displayedMeasure = displayed && displayed.tipo === "metano" ? "€/kg" : "€/L";
+                    const displayedLabel = displayed
+                        ? `${displayed.prezzo.toFixed(3)} ${displayedMeasure}`
+                        : "n.d.";
+                    const displayedSub = displayed
+                        ? `${fuelLabels[displayed.tipo] || displayed.tipo}${displayed.self ? " Self" : " Servito"}`
+                        : "Prezzo non disponibile";
+                    const fullTankCost = displayed ? displayed.prezzo * TANK_CAPACITY : null;
+                    const quality = fuelQuality(s);
+                    const qTone = qualityTone(quality.level);
+                    const updateText = latest ? formatFuelDate(latest) : "n.d.";
+                    const savingsText = savingsInfo ? formatEuroAmount(savingsInfo.amount) : "n.d.";
+                    const savingsSub = savingsInfo
+                        ? `su ${TANK_CAPACITY} L di ${savingsInfo.fuelLabel}`
+                        : "nessun risparmio rilevante";
+                    const badges = [
+                        isBestStation ? renderFuelBadge("Miglior scelta", "good") : "",
+                        isWorstStation ? renderFuelBadge("Prezzo alto in zona", "bad") : "",
+                        renderFuelBadge(quality.label || "Dato da verificare", qTone, quality.detail || ""),
+                        displayed ? renderFuelBadge(displayed.self ? "Self" : "Servito", displayed.self ? "good" : "warn") : ""
+                    ].filter(Boolean).join("");
+                    const sourceLine = [
+                        state.lastDataSource || "MIMIT",
+                        latest ? "agg. " + formatFuelDate(latest) : "aggiornamento n.d.",
+                        state.lastWarning ? "cache/stato: " + state.lastWarning : ""
+                    ].filter(Boolean).join(" · ");
+
                     return `
-                  <div class="card ${isBestStation ? "best" : ""} ${isWorstStation ? "worst" : ""}">
-                    <div>
-                      <div class="name">
-                        ${escapeHtml(stationTitle)}
-                        ${isBestStation ? '<span class="pill">🔥 SUPER PREZZO</span>' : ""}
+                  <div class="card fuel-card ${isBestStation ? "best" : ""} ${isWorstStation ? "worst" : ""}">
+                    <div class="fuel-card-head">
+                      <div>
+                        <div class="name">
+                          ${escapeHtml(stationTitle)}
+                          ${isBestStation ? '<span class="pill">SUPER PREZZO</span>' : ""}
+                        </div>
+                        <div class="addr">${escapeHtml(fullAddr)}</div>
+                        <div class="fuel-badges">${badges}</div>
                       </div>
-
-                      <div class="addr">${escapeHtml(fullAddr)}</div>
-
-                      <div class="prices">${chips}</div>
-
-                      ${badgesHtml}
-
-                      <div class="meta">
-                        ${fresh ? "🟢 Aggiornato di recente" : "🟠 Aggiornamento meno recente"}
-                        ${latest ? " · " + escapeHtml(new Date(latest).toLocaleString("it-IT", {
-                        day: "2-digit",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit"
-                    })) : ""}
+                      <div class="right">
+                        <div class="dist">${Number(s.dist).toFixed(1)} <span>km</span></div>
+                        <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">Vai qui</a>
                       </div>
                     </div>
 
-                    <div class="right">
-                      <div class="dist">${s.dist.toFixed(1)} <span>km</span></div>
-                      <a class="map" href="https://maps.google.com/?q=${encodeURIComponent(s.lat + "," + s.lon)}" target="_blank" rel="noopener">Vai qui</a>
+                    <div class="fuel-summary-grid">
+                      ${renderFuelMetric("Prezzo migliore", displayedLabel, displayedSub, isBestStation ? "good" : "neutral")}
+                      ${renderFuelMetric("Costo stimato", fullTankCost ? formatEuroAmount(fullTankCost) : "n.d.", `su ${TANK_CAPACITY} L`, "warn")}
+                      ${renderFuelMetric("Risparmio", savingsText, savingsSub, savingsInfo ? "good" : "neutral")}
+                      ${renderFuelMetric("Aggiornato", updateText, quality.detail || "fonte MIMIT", qTone)}
                     </div>
+
+                    <details class="fuel-details">
+                      <summary>Vedi tutti i prezzi comunicati</summary>
+                      <div class="fuel-details-body">
+                        <div class="prices">${chips}</div>
+                        <div class="fuel-source-line">${escapeHtml(sourceLine)}</div>
+                      </div>
+                    </details>
                   </div>
                 `;
                 }).join("");
@@ -1624,6 +1949,8 @@
                     window.history.replaceState({}, "", url);
 
                     setStatus("");
+                    writePreferences();
+                    if (state.lastWarning) setNotice(state.lastWarning, "warn");
 
                     if (!state.risultati.length) {
                         showEmpty(`Nessun affare trovato entro ${radius} km da "${escapeHtml(query)}". Prova ad ampliare il raggio!`);
@@ -1633,7 +1960,7 @@
                     renderResults();
                 } catch (err) {
                     setStatus("");
-                    showEmpty(err.message);
+                    showEmpty(friendlyErrorMessage(err.message));
                     setNotice("Impossibile completare la ricerca dei prezzi.", "error");
                 } finally {
                     setBusy(false);
@@ -1685,6 +2012,8 @@
                     });
 
                     setStatus("");
+                    writePreferences();
+                    if (state.lastWarning) setNotice(state.lastWarning, "warn");
 
                     if (!state.risultati.length) {
                         showEmpty(`Nessun distributore trovato entro ${radius} km dalla tua posizione.`);
@@ -1694,7 +2023,7 @@
                     renderResults();
                 } catch (err) {
                     setStatus("");
-                    showEmpty(err.message);
+                    showEmpty(friendlyErrorMessage(err.message));
                     setNotice("Controlla i permessi del GPS del tuo telefono/browser.", "error");
                 } finally {
                     setBusy(false);

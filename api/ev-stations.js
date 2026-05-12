@@ -312,6 +312,29 @@ function parseUsageCostText(text) {
   return candidates.filter((x) => x.eurPerKwh || x.eurPerMinute || x.note);
 }
 
+function getOcmApiKey() {
+  return String(
+    process.env.OCM_API_KEY
+      || process.env.OPENCHARGEMAP_API_KEY
+      || process.env.OPEN_CHARGE_MAP_API_KEY
+      || ''
+  ).trim();
+}
+
+function redactUrl(url) {
+  try {
+    const safe = new URL(url);
+    if (safe.searchParams.has('key')) safe.searchParams.set('key', '***');
+    return safe.toString();
+  } catch {
+    return String(url).replace(/([?&]key=)[^&]+/i, '$1***');
+  }
+}
+
+function textSnippet(text, maxLength = 220) {
+  return String(text || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, {
     ...options,
@@ -322,20 +345,31 @@ async function fetchJson(url, options = {}) {
     },
   });
   const text = await response.text();
-  let data;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    throw new Error(`Risposta JSON non valida da ${url}`);
+  let data = null;
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      const snippet = textSnippet(text);
+      const status = response.status ? `HTTP ${response.status}` : 'risposta non JSON';
+      throw new Error(`${status}: risposta non JSON da ${redactUrl(url)}${snippet ? ` - ${snippet}` : ''}`);
+    }
   }
+
   if (!response.ok) {
-    const message = data?.message || data?.error || `HTTP ${response.status}`;
-    throw new Error(message);
+    const message = data?.message || data?.error || data?.Error || `HTTP ${response.status}`;
+    throw new Error(String(message));
   }
   return data;
 }
 
 async function fetchOpenChargeMap({ lat, lon, radiusKm, maxResults }) {
+  const apiKey = getOcmApiKey();
+  if (!apiKey) {
+    throw new Error('OCM_API_KEY non caricata. In locale crea un file .env.local nella cartella principale del progetto e riavvia npm run dev.');
+  }
+
   const params = new URLSearchParams({
     output: 'json',
     countrycode: 'IT',
@@ -346,19 +380,21 @@ async function fetchOpenChargeMap({ lat, lon, radiusKm, maxResults }) {
     maxresults: String(maxResults),
     compact: 'false',
     verbose: 'false',
+    key: apiKey,
   });
 
-  if (process.env.OCM_API_KEY) {
-    params.set('key', process.env.OCM_API_KEY);
-  }
-
   const url = `${OCM_BASE_URL}?${params.toString()}`;
-  const cached = cache.ocm.get(url);
+  const cacheKey = redactUrl(url);
+  const cached = cache.ocm.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.rows;
 
-  const rows = await fetchJson(url);
+  const rows = await fetchJson(url, {
+    headers: {
+      'X-API-Key': apiKey,
+    },
+  });
   if (!Array.isArray(rows)) throw new Error('OpenChargeMap: risposta inattesa');
-  cache.ocm.set(url, { expiresAt: Date.now() + CACHE_TTL_MS, rows });
+  cache.ocm.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, rows });
   return rows;
 }
 
@@ -760,7 +796,7 @@ export default async function handler(req, res) {
         stationsUpdatedAt: latestStationsUpdatedAt,
         prices: [MARKET_AVERAGE_SOURCE, 'OpenChargeMap UsageCost', ...tariffData.sources],
       },
-      pricingNote: 'Prezzi e disponibilita EV sono indicativi: verifica sempre in app o sul provider prima di avviare la ricarica.',
+      pricingNote: 'Prezzi, stato e disponibilità EV sono indicativi: verifica sempre in app o sul provider prima di avviare la ricarica.',
       results,
     });
   } catch (err) {

@@ -2,5 +2,13 @@
   "name": "prezzofuel",
   "version": "1.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/local-dev.mjs",
+    "start": "node scripts/local-dev.mjs",
+    "dev:vercel": "npx vercel dev --listen 3000"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
