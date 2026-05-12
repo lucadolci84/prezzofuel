@@ -31,3 +31,7 @@ Thumbs.db
 *.temp
 .vercel
 .env*.local
+
+# Sicurezza: non versionare mai segreti locali
+.env.*
+!.env.example
