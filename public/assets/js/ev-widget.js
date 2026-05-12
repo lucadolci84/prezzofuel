@@ -26,7 +26,7 @@
     if (document.getElementById('evUnifiedToggle')) return;
 
     const originalSearchHtml = searchBtn.innerHTML;
-    const evSearchHtml = '⚡ Trova colonnine';
+    const evSearchHtml = '\u26a1 Trova colonnine';
     const originalSortOptions = sortSelect ? sortSelect.innerHTML : '';
     const fuelActiveClasses = ['active-green', 'active-blue', 'active-amber', 'active-cyan'];
     let evMode = false;
@@ -54,20 +54,18 @@
     }, true);
 
     fuelRow.addEventListener('click', function (event) {
-  const normalFuel = event.target.closest('.fuel-toggle[data-fuel]:not([data-fuel="elettrico"])');
-  if (!normalFuel || !evMode) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-
-  switchFromEvToFuel(normalFuel);
-}, true);
+      const normalFuel = event.target.closest('.fuel-toggle[data-fuel]:not([data-fuel="elettrico"])');
+      if (!normalFuel || !evMode) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      switchFromEvToFuel(normalFuel);
+    }, true);
 
     connectorRow.addEventListener('click', function (event) {
-      const item = event.target.closest('.ev-connector-chip');
-      if (!item) return;
-      item.classList.toggle('is-active');
+      const chip = event.target.closest('.ev-connector-chip, .ev-power-chip');
+      if (!chip) return;
+      chip.classList.toggle('is-active');
     });
 
     searchBtn.addEventListener('click', function (event) {
@@ -108,7 +106,7 @@
     }
 
     function addConnectorFilters() {
-      fuelRow.insertAdjacentHTML('afterend', '\n        <div class="ev-connectors-panel" id="evConnectorFilters" hidden>\n          <div class="ev-filter-title">Tipo di ricarica</div>\n          <div class="ev-filter-help">Puoi lasciare selezionati tutti i tipi se non sai quale scegliere.</div>\n          <div class="ev-connector-row">\n            <button type="button" class="ev-connector-chip is-active" data-connector="type2">\n              <span>AC / Type 2</span><small>ricarica normale</small>\n            </button>\n            <button type="button" class="ev-connector-chip is-active" data-connector="ccs">\n              <span>DC rapida / CCS</span><small>auto moderne</small>\n            </button>\n            <button type="button" class="ev-connector-chip" data-connector="chademo">\n              <span>CHAdeMO</span><small>alcuni modelli datati</small>\n            </button>\n          </div>\n        </div>\n      ');
+      fuelRow.insertAdjacentHTML('afterend', '\n        <div class="ev-connectors-panel" id="evConnectorFilters" hidden>\n          <div class="ev-filter-grid">\n            <div>\n              <div class="ev-filter-title">Tipo di connettore</div>\n              <div class="ev-filter-help">Puoi lasciare selezionati Type 2 e CCS se non sai quale scegliere.</div>\n              <div class="ev-connector-row">\n                <button type="button" class="ev-connector-chip is-active" data-connector="type2">\n                  <span>AC / Type 2</span><small>ricarica normale</small>\n                </button>\n                <button type="button" class="ev-connector-chip is-active" data-connector="ccs">\n                  <span>DC rapida / CCS</span><small>auto moderne</small>\n                </button>\n                <button type="button" class="ev-connector-chip" data-connector="chademo">\n                  <span>CHAdeMO</span><small>alcuni modelli datati</small>\n                </button>\n              </div>\n            </div>\n            <div>\n              <div class="ev-filter-title">Potenza</div>\n              <div class="ev-filter-help">Se non selezioni nulla, vengono mostrate tutte le potenze.</div>\n              <div class="ev-connector-row">\n                <button type="button" class="ev-power-chip" data-power="ac">\n                  <span>AC</span><small>fino a 49 kW</small>\n                </button>\n                <button type="button" class="ev-power-chip" data-power="dc">\n                  <span>DC</span><small>50-149 kW</small>\n                </button>\n                <button type="button" class="ev-power-chip" data-power="hpc">\n                  <span>HPC</span><small>150+ kW</small>\n                </button>\n                <button type="button" class="ev-power-chip" data-power="ultra300">\n                  <span>300+</span><small>viaggi lunghi</small>\n                </button>\n              </div>\n            </div>\n          </div>\n          <div class="ev-extra-row">\n            <label class="ev-check"><input type="checkbox" id="evOperationalOnly" checked> Solo colonnine indicate come operative</label>\n            <label class="ev-kwh-label">Stima costo per <input id="evKwhEstimate" class="ev-kwh-input" type="number" min="5" max="120" step="5" value="30"> kWh</label>\n          </div>\n        </div>\n      ');
     }
 
     function fuelButtons() {
@@ -135,54 +133,48 @@
         }
       });
     }
-	
-	function isFuelClassActive(className) {
-  return /\bactive-(green|blue|amber|cyan)\b/.test(className || '');
-}
 
-function activeClassForFuel(fuel) {
-  const map = {
-    benzina: 'active-green',
-    diesel: 'active-blue',
-    gpl: 'active-amber',
-    metano: 'active-amber',
-    hvo: 'active-blue'
-  };
-
-  return map[fuel] || 'active-green';
-}
-
-function switchFromEvToFuel(selectedButton) {
-  const buttons = fuelButtons();
-  const selectedFuel = selectedButton.getAttribute('data-fuel');
-
-  const wasActive = {};
-
-  buttons.forEach(function (button) {
-    const fuel = button.getAttribute('data-fuel');
-    const previousClass = button.getAttribute('data-ev-prev-class') || button.className;
-    wasActive[fuel] = isFuelClassActive(previousClass);
-  });
-
-  setEvMode(false);
-
-  buttons.forEach(function (button) {
-    const fuel = button.getAttribute('data-fuel');
-    const shouldBeActive = fuel === selectedFuel;
-
-    if (Boolean(wasActive[fuel]) !== shouldBeActive) {
-      button.click();
+    function isFuelClassActive(className) {
+      return /\bactive-(green|blue|amber|cyan)\b/.test(className || '');
     }
-  });
 
-  buttons.forEach(function (button) {
-    const fuel = button.getAttribute('data-fuel');
+    function activeClassForFuel(fuel) {
+      const map = {
+        benzina: 'active-green',
+        diesel: 'active-blue',
+        gpl: 'active-amber',
+        metano: 'active-amber',
+        hvo: 'active-blue'
+      };
+      return map[fuel] || 'active-green';
+    }
 
-    button.className = fuel === selectedFuel
-      ? 'fuel-toggle ' + activeClassForFuel(fuel)
-      : 'fuel-toggle';
-  });
-}
+    function switchFromEvToFuel(selectedButton) {
+      const buttons = fuelButtons();
+      const selectedFuel = selectedButton.getAttribute('data-fuel');
+      const wasActive = {};
+
+      buttons.forEach(function (button) {
+        const fuel = button.getAttribute('data-fuel');
+        const previousClass = button.getAttribute('data-ev-prev-class') || button.className;
+        wasActive[fuel] = isFuelClassActive(previousClass);
+      });
+
+      setEvMode(false);
+
+      buttons.forEach(function (button) {
+        const fuel = button.getAttribute('data-fuel');
+        const shouldBeActive = fuel === selectedFuel;
+        if (Boolean(wasActive[fuel]) !== shouldBeActive) button.click();
+      });
+
+      buttons.forEach(function (button) {
+        const fuel = button.getAttribute('data-fuel');
+        button.className = fuel === selectedFuel
+          ? 'fuel-toggle ' + activeClassForFuel(fuel)
+          : 'fuel-toggle';
+      });
+    }
 
     function setEvMode(enabled) {
       const nextEvMode = Boolean(enabled);
@@ -200,7 +192,7 @@ function switchFromEvToFuel(selectedButton) {
 
       if (sortSelect) {
         if (evMode) {
-          sortSelect.innerHTML = '\n            <option value="price">Prezzo migliore</option>\n            <option value="distance">Distanza</option>\n            <option value="power">Potenza massima</option>\n          ';
+          sortSelect.innerHTML = '\n            <option value="recommended">Consigliate</option>\n            <option value="price">Prezzo migliore</option>\n            <option value="distance">Distanza</option>\n            <option value="power">Potenza massima</option>\n            <option value="freshness">Dati piu recenti</option>\n          ';
         } else {
           sortSelect.innerHTML = originalSortOptions;
           lastEvParams = null;
@@ -215,6 +207,24 @@ function switchFromEvToFuel(selectedButton) {
       return Array.from(connectorRow.querySelectorAll('.ev-connector-chip.is-active'))
         .map(function (el) { return el.getAttribute('data-connector'); })
         .filter(Boolean);
+    }
+
+    function activePowerBands() {
+      return Array.from(connectorRow.querySelectorAll('.ev-power-chip.is-active'))
+        .map(function (el) { return el.getAttribute('data-power'); })
+        .filter(Boolean);
+    }
+
+    function operationalOnlyEnabled() {
+      const input = document.getElementById('evOperationalOnly');
+      return !input || input.checked;
+    }
+
+    function selectedKwhEstimate() {
+      const input = document.getElementById('evKwhEstimate');
+      const value = Number(input && input.value);
+      if (!Number.isFinite(value) || value <= 0) return 30;
+      return Math.max(5, Math.min(120, value));
     }
 
     function clearStatus() {
@@ -253,7 +263,6 @@ function switchFromEvToFuel(selectedButton) {
       return Number.isFinite(n) && n > 0 ? n.toFixed(0) + ' kW' : 'n.d.';
     }
 
-
     function formatEvDateTime(value) {
       if (!value) return '';
       const date = new Date(value);
@@ -273,9 +282,8 @@ function switchFromEvToFuel(selectedButton) {
     }
 
     function selectedSort() {
-      return sortSelect ? sortSelect.value : 'price';
+      return sortSelect ? sortSelect.value : 'recommended';
     }
-
 
     function setEvBusy(busy, label) {
       evBusy = Boolean(busy);
@@ -292,17 +300,21 @@ function switchFromEvToFuel(selectedButton) {
     async function runEvSearch(params) {
       const connectors = activeConnectors();
       if (!connectors.length) {
-        setNotice('Seleziona almeno un tipo di ricarica, oppure lascia attivi AC/Type 2 e CCS.', 'warn');
+        setNotice('Seleziona almeno un tipo di connettore, oppure lascia attivi AC/Type 2 e CCS.', 'warn');
         setEvBusy(false);
         return;
       }
 
       const radius = String(params.radius || radiusEl.value || 10);
+      const powerBands = activePowerBands();
       const query = new URLSearchParams({
         radius: radius,
         connectors: connectors.join(','),
-        sort: selectedSort()
+        sort: selectedSort(),
+        operational: operationalOnlyEnabled() ? '1' : '0',
+        kwh: String(selectedKwhEstimate())
       });
+      if (powerBands.length) query.set('power', powerBands.join(','));
 
       if (params.lat && params.lon) {
         query.set('lat', String(params.lat));
@@ -332,6 +344,9 @@ function switchFromEvToFuel(selectedButton) {
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || 'Errore durante la ricerca delle colonnine');
         clearStatus();
+        if (data.autoExpanded) {
+          setNotice('Non ho trovato risultati nel raggio iniziale: ricerca estesa automaticamente a ' + data.radiusKm + ' km.', 'warn');
+        }
         renderEvResults(data);
         renderEvMap(data);
       } catch (err) {
@@ -402,10 +417,6 @@ function switchFromEvToFuel(selectedButton) {
         mapWrap = document.getElementById('mapWrap');
       }
       if (!mapWrap) return null;
-
-      // Manteniamo lo stesso involucro grafico usato per benzina/diesel/GPL/metano.
-      // Usiamo solo un div mappa separato per non interferire con l'istanza Leaflet
-      // originale, che vive nella closure dello script principale.
       if (originalResultsMap) originalResultsMap.style.display = 'none';
 
       evMapTarget = document.getElementById('evResultsMap');
@@ -460,7 +471,8 @@ function switchFromEvToFuel(selectedButton) {
         .map(escapeHtml)
         .join('<br>');
       const power = formatPower(station.maxPowerKw);
-      return '\n        <div class="map-popup">\n          <div class="title">' + escapeHtml(title) + '</div>\n          <div class="meta">' + meta + '</div>\n          <div class="price">' + escapeHtml(price) + ' · ' + escapeHtml(power) + '</div>\n          <div class="meta"><a href="' + maps + '" target="_blank" rel="noopener">Apri navigatore</a></div>\n        </div>\n      ';
+      const score = Number.isFinite(Number(station.recommendationScore)) ? ' · score ' + station.recommendationScore : '';
+      return '\n        <div class="map-popup">\n          <div class="title">' + escapeHtml(title) + '</div>\n          <div class="meta">' + meta + '</div>\n          <div class="price">' + escapeHtml(price) + ' · ' + escapeHtml(power) + escapeHtml(score) + '</div>\n          <div class="meta"><a href="' + maps + '" target="_blank" rel="noopener">Apri navigatore</a></div>\n        </div>\n      ';
     }
 
     function numericEvPrice(station) {
@@ -481,6 +493,7 @@ function switchFromEvToFuel(selectedButton) {
 
     function markerClassForStation(station, colorIndex) {
       const price = numericEvPrice(station);
+      if (Number(station.recommendationScore || 0) >= 75) return 'best';
       if (!Number.isFinite(price) || colorIndex.min == null || colorIndex.max == null) return 'normal';
       if (price === colorIndex.min) return 'best';
       if (price === colorIndex.max && colorIndex.max > colorIndex.min) return 'worst';
@@ -575,28 +588,69 @@ function switchFromEvToFuel(selectedButton) {
       if (sortBar) sortBar.style.display = items.length ? 'flex' : 'none';
       if (countBadge) {
         const latestUpdate = formatEvDateTime(data.updatedAt || (data.sources && data.sources.stationsUpdatedAt));
+        const radiusText = data.autoExpanded ? ' · raggio esteso a ' + data.radiusKm + ' km' : '';
         countBadge.textContent = items.length
-          ? items.length + ' colonnine trovate' + (latestUpdate ? ' · ultimo aggiornamento dati: ' + latestUpdate : '')
+          ? items.length + ' colonnine trovate' + radiusText + (latestUpdate ? ' · ultimo aggiornamento dati: ' + latestUpdate : '')
           : '';
       }
 
       if (!items.length) {
-        resultsEl.innerHTML = '<div class="empty">Nessuna colonnina trovata nel raggio selezionato.</div>';
+        resultsEl.innerHTML = '<div class="empty">Nessuna colonnina trovata con i filtri selezionati. Prova ad aumentare il raggio, disattivare "solo operative" o rimuovere il filtro potenza.</div>';
         return;
       }
 
-      resultsEl.innerHTML = items.map(function (station, index) {
+      const noteHtml = renderEvResultNote(data);
+      resultsEl.innerHTML = noteHtml + items.map(function (station, index) {
         const maps = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(String(station.lat) + ',' + String(station.lon));
         const operator = station.operator ? '<span class="pill">' + escapeHtml(station.operator) + '</span>' : '';
         const priceHtml = renderEvPrice(station);
         const connectorHtml = renderEvConnections(station);
-        const status = station.status || 'n.d.';
+        const status = renderOperationalLabel(station);
         const power = formatPower(station.maxPowerKw);
         const title = station.title || 'Colonnina di ricarica';
         const updatedText = renderEvUpdateText(station.updatedAt);
+        const qualityHtml = renderEvQuality(station);
+        const scoreHtml = renderRecommendation(station, index);
+        const detailsHtml = renderEvDetails(station);
 
-        return '\n          <div class="card ' + (index === 0 ? 'best' : '') + '">\n            <div>\n              <div class="name">' + escapeHtml(title) + ' ' + operator + '</div>\n              <div class="addr">' + escapeHtml(station.address || '') + '</div>\n              <div class="meta">Fonte: ' + escapeHtml(station.source || 'OpenChargeMap') + ' · Stato: ' + escapeHtml(status) + ' · Potenza max: ' + escapeHtml(power) + ' · ' + escapeHtml(updatedText) + '</div>\n              <div class="prices">' + priceHtml + connectorHtml + '</div>\n              ' + (station.usageCostText ? '<div class="meta">Nota costo: ' + escapeHtml(station.usageCostText) + '</div>' : '') + '\n            </div>\n            <div class="right">\n              <div class="dist">' + Number(station.distanceKm || 0).toFixed(1) + ' <span>km</span></div>\n              <a class="map" href="' + maps + '" target="_blank" rel="noopener">Mappa</a>\n            </div>\n          </div>\n        ';
+        return '\n          <div class="card ' + (index === 0 ? 'best' : '') + '">\n            <div>\n              <div class="name">' + escapeHtml(title) + ' ' + operator + '</div>\n              <div class="addr">' + escapeHtml(station.address || '') + '</div>\n              <div class="ev-mini-badges">' + scoreHtml + qualityHtml + '</div>\n              <div class="meta">Fonte: ' + escapeHtml(station.source || 'OpenChargeMap') + ' · Stato: ' + escapeHtml(status) + ' · Potenza max: ' + escapeHtml(power) + ' · ' + escapeHtml(updatedText) + '</div>\n              <div class="prices">' + priceHtml + connectorHtml + '</div>\n              ' + (station.usageCostText ? '<div class="meta">Nota costo: ' + escapeHtml(station.usageCostText) + '</div>' : '') + '\n              ' + detailsHtml + '\n            </div>\n            <div class="right">\n              <div class="dist">' + Number(station.distanceKm || 0).toFixed(1) + ' <span>km</span></div>\n              <a class="map" href="' + maps + '" target="_blank" rel="noopener">Mappa</a>\n            </div>\n          </div>\n        ';
       }).join('');
+    }
+
+    function renderEvResultNote(data) {
+      const parts = [];
+      if (data.autoExpanded) {
+        parts.push('Ricerca estesa automaticamente da ' + data.requestedRadiusKm + ' a ' + data.radiusKm + ' km.');
+      }
+      if (data.filters && data.filters.operationalOnly) {
+        parts.push('Filtro attivo: solo colonnine indicate come operative. Lo stato non e necessariamente live.');
+      }
+      if (data.pricingNote) parts.push(data.pricingNote);
+      if (!parts.length) return '';
+      return '<div class="ev-result-note">' + escapeHtml(parts.join(' ')) + '</div>';
+    }
+
+    function renderOperationalLabel(station) {
+      if (station.isOperational === true) return 'operativa';
+      if (station.isOperational === false) return 'non operativa';
+      return station.status || 'da verificare';
+    }
+
+    function renderRecommendation(station, index) {
+      const score = Number(station.recommendationScore);
+      const reasons = Array.isArray(station.recommendationReasons) ? station.recommendationReasons : [];
+      if (!Number.isFinite(score)) return '';
+      const label = index === 0 ? 'Consigliata' : 'Score';
+      const reasonText = reasons.length ? ' · ' + reasons.join(', ') : '';
+      return '<span class="ev-score-badge" title="Punteggio basato su prezzo, distanza, potenza, aggiornamento e stato">' + escapeHtml(label + ' ' + score + '/100' + reasonText) + '</span>';
+    }
+
+    function renderEvQuality(station) {
+      const quality = station.dataQuality || {};
+      const level = quality.level || 'incomplete';
+      const label = quality.label || 'Dato da verificare';
+      const detail = quality.detail ? ' · ' + quality.detail : '';
+      return '<span class="ev-quality ev-quality-' + escapeHtml(level) + '" title="' + escapeHtml(label + detail) + '">' + escapeHtml(label) + '</span>';
     }
 
     function renderEvPrice(station) {
@@ -613,19 +667,38 @@ function switchFromEvToFuel(selectedButton) {
       } else if (price.confidence === 'missing') {
         confidence = 'non disponibile';
         cls = 'danger';
+      } else if (price.confidence === 'low' || price.confidence === 'text-only') {
+        confidence = 'community';
+        cls = 'amber';
       }
 
       const title = price.label || 'Prezzo ricarica';
       const priceUpdated = formatEvDateTime(price.updatedAt);
       const chipTitle = [price.source || '', priceUpdated ? 'Aggiornato: ' + priceUpdated : ''].filter(Boolean).join(' · ');
-      return '\n        <div class="chip ' + cls + '" title="' + escapeHtml(chipTitle) + '">\n          <span>' + escapeHtml(title) + '</span>\n          <span class="val">' + escapeHtml(label) + '</span>\n          <span>' + escapeHtml(confidence) + (priceUpdated ? ' · agg. ' + escapeHtml(priceUpdated) : '') + '</span>\n        </div>\n      ';
+      const estimate = price.estimate && price.estimate.display
+        ? '\n        <div class="chip cyan" title="' + escapeHtml(price.estimate.note || '') + '">\n          <span>Stima sessione</span>\n          <span class="val">' + escapeHtml(price.estimate.display.replace('EUR', '\u20ac')) + '</span>\n          <span>' + escapeHtml(price.estimate.note || 'stima') + '</span>\n        </div>\n      '
+        : '';
+
+      return '\n        <div class="chip ' + cls + '" title="' + escapeHtml(chipTitle) + '">\n          <span>' + escapeHtml(title) + '</span>\n          <span class="val">' + escapeHtml(label) + '</span>\n          <span>' + escapeHtml(confidence) + (priceUpdated ? ' · agg. ' + escapeHtml(priceUpdated) : '') + '</span>\n        </div>\n      ' + estimate;
     }
 
     function renderEvConnections(station) {
       const connections = Array.isArray(station.connections) ? station.connections : [];
       return connections.slice(0, 4).map(function (connection) {
         return '\n          <div class="chip blue">\n            <span>' + escapeHtml(connection.type || 'Connettore') + '</span>\n            <span class="val">' + escapeHtml(formatPower(connection.powerKw)) + '</span>\n            <span>' + escapeHtml(connection.status || '') + '</span>\n          </div>\n        ';
+      }).join('') + (connections.length > 4 ? '<div class="chip blue"><span>Altri connettori</span><span class="val">+' + (connections.length - 4) + '</span><span>vedi dettagli</span></div>' : '');
+    }
+
+    function renderEvDetails(station) {
+      const connections = Array.isArray(station.connections) ? station.connections : [];
+      const rows = connections.map(function (connection) {
+        return '<li><strong>' + escapeHtml(connection.type || 'Connettore') + '</strong> · ' + escapeHtml(formatPower(connection.powerKw)) + ' · ' + escapeHtml(connection.currentType || '') + ' · ' + escapeHtml(connection.status || 'stato n.d.') + '</li>';
       }).join('');
+      const source = station.sourceUrl ? '<a href="' + escapeHtml(station.sourceUrl) + '" target="_blank" rel="noopener">Scheda OpenChargeMap</a>' : '';
+      const verified = station.verifiedAt ? 'Ultima verifica: ' + formatEvDateTime(station.verifiedAt) : '';
+      const statusUpdate = station.statusUpdatedAt ? 'Aggiornamento stato: ' + formatEvDateTime(station.statusUpdatedAt) : '';
+      const meta = [verified, statusUpdate, source].filter(Boolean).join(' · ');
+      return '\n        <details class="ev-details">\n          <summary>Dettagli colonnina</summary>\n          <ul>' + rows + '</ul>\n          ' + (meta ? '<div class="meta">' + meta + '</div>' : '') + '\n        </details>\n      ';
     }
 
     function injectStyles() {
@@ -648,6 +721,11 @@ function switchFromEvToFuel(selectedButton) {
           border-radius: 16px;
           background: rgba(15, 23, 42, .38);
         }
+        .ev-filter-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
         .ev-filter-title {
           color: #e2e8f0;
           font-weight: 800;
@@ -664,7 +742,8 @@ function switchFromEvToFuel(selectedButton) {
           gap: 10px;
           flex-wrap: wrap;
         }
-        .ev-connector-chip {
+        .ev-connector-chip,
+        .ev-power-chip {
           border: 1px solid var(--line);
           border-radius: 12px;
           background: #0e1217;
@@ -674,21 +753,121 @@ function switchFromEvToFuel(selectedButton) {
           display: inline-flex;
           flex-direction: column;
           gap: 2px;
-          min-width: 132px;
+          min-width: 118px;
           text-align: left;
         }
-        .ev-connector-chip span {
+        .ev-connector-chip span,
+        .ev-power-chip span {
           font-weight: 800;
           color: #e2e8f0;
         }
-        .ev-connector-chip small {
+        .ev-connector-chip small,
+        .ev-power-chip small {
           color: #94a3b8;
           font-size: .72rem;
         }
-        .ev-connector-chip.is-active {
+        .ev-connector-chip.is-active,
+        .ev-power-chip.is-active {
           border-color: rgba(56, 189, 248, .45);
           background: rgba(56, 189, 248, .12);
           box-shadow: 0 4px 12px rgba(56, 189, 248, .08);
+        }
+        .ev-extra-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          flex-wrap: wrap;
+          margin-top: 14px;
+          padding-top: 14px;
+          border-top: 1px solid rgba(255,255,255,.06);
+          color: #cbd5e1;
+          font-size: .86rem;
+        }
+        .ev-check,
+        .ev-kwh-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0;
+          color: #cbd5e1;
+          font-weight: 700;
+        }
+        .ev-kwh-input {
+          width: 78px !important;
+          padding: 8px 10px !important;
+          min-height: 0;
+          border-radius: 10px !important;
+        }
+        .ev-result-note {
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(56, 189, 248, .18);
+          background: rgba(56, 189, 248, .08);
+          color: #bae6fd;
+          line-height: 1.5;
+          font-size: .88rem;
+        }
+        .ev-mini-badges {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 10px;
+        }
+        .ev-score-badge,
+        .ev-quality {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 10px;
+          border-radius: 999px;
+          font-size: .72rem;
+          font-weight: 800;
+          border: 1px solid rgba(255,255,255,.10);
+        }
+        .ev-score-badge {
+          background: rgba(34,197,94,.12);
+          color: #86efac;
+          border-color: rgba(34,197,94,.28);
+        }
+        .ev-quality-recent {
+          background: rgba(34,197,94,.10);
+          color: #86efac;
+          border-color: rgba(34,197,94,.25);
+        }
+        .ev-quality-verify {
+          background: rgba(245,158,11,.10);
+          color: #fcd34d;
+          border-color: rgba(245,158,11,.25);
+        }
+        .ev-quality-stale,
+        .ev-quality-incomplete {
+          background: rgba(248,113,113,.10);
+          color: #fca5a5;
+          border-color: rgba(248,113,113,.25);
+        }
+        .chip.cyan {
+          background: rgba(56,189,248,.10);
+          border-color: rgba(56,189,248,.30);
+        }
+        .ev-details {
+          margin-top: 12px;
+          color: #94a3b8;
+          font-size: .82rem;
+        }
+        .ev-details summary {
+          cursor: pointer;
+          color: #bae6fd;
+          font-weight: 800;
+        }
+        .ev-details ul {
+          margin: 10px 0 0;
+          padding-left: 18px;
+          line-height: 1.7;
+        }
+        .ev-details a {
+          color: #bae6fd;
+          text-decoration: none;
+          font-weight: 800;
         }
         #evResultsMap.results-map {
           width: 100%;
@@ -700,13 +879,20 @@ function switchFromEvToFuel(selectedButton) {
           line-height: 1.4;
         }
         @media (max-width: 760px) {
-          .ev-connector-chip {
+          .ev-filter-grid {
+            grid-template-columns: 1fr;
+          }
+          .ev-connector-chip,
+          .ev-power-chip {
             width: 100%;
+          }
+          .ev-extra-row {
+            align-items: stretch;
+            flex-direction: column;
           }
         }
       `;
       document.head.appendChild(style);
     }
-
   });
 })();

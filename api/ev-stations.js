@@ -96,6 +96,177 @@ function openChargeMapUpdateInfo(row) {
   ]);
 }
 
+
+function parseBooleanFlag(value) {
+  const normalized = normalizeText(value);
+  return ['1', 'true', 'yes', 'si', 'solo operative', 'operative'].includes(normalized);
+}
+
+function buildRadiusSearchPlan(radiusKm) {
+  const base = clampNumber(radiusKm, 1, MAX_RADIUS_KM, 10);
+  const candidates = [base, 25, 50, MAX_RADIUS_KM]
+    .filter((value) => value >= base && value <= MAX_RADIUS_KM);
+  return [...new Set(candidates)].sort((a, b) => a - b);
+}
+
+function stationOperationalValue(station) {
+  const values = (station.connections || [])
+    .map((connection) => connection.isOperational)
+    .filter((value) => value === true || value === false);
+
+  if (values.some((value) => value === true)) return true;
+  if (station.isOperational === true) return true;
+  if (station.isOperational === false) return false;
+  if (values.length && values.every((value) => value === false)) return false;
+  return null;
+}
+
+function connectionMatchesPowerBand(connection, band) {
+  const powerKw = Number(connection.powerKw || 0);
+  const text = normalizeText(`${connection.type} ${connection.currentType} ${connection.level}`);
+
+  if (band === 'ac') return (powerKw > 0 && powerKw < 50) || (/\bac\b|type 2|mennekes/.test(text) && !/ccs|combo|chademo|dc/.test(text));
+  if (band === 'dc') return (powerKw >= 50 && powerKw < 150) || (/ccs|combo|chademo|\bdc\b/.test(text) && powerKw < 150);
+  if (band === 'hpc') return powerKw >= 150;
+  if (band === 'ultra300') return powerKw >= 300;
+  return true;
+}
+
+function stationMatchesPowerBands(station, powerBands) {
+  if (!powerBands || !powerBands.size) return true;
+  return (station.connections || []).some((connection) => {
+    for (const band of powerBands) {
+      if (connectionMatchesPowerBand(connection, band)) return true;
+    }
+    return false;
+  });
+}
+
+function buildDataQuality(station) {
+  const missingFields = [];
+  if (!station.address) missingFields.push('indirizzo');
+  if (!station.maxPowerKw) missingFields.push('potenza');
+  if (station.isOperational !== true && station.isOperational !== false) missingFields.push('stato');
+  if (!station.updatedAt) missingFields.push('aggiornamento');
+
+  const timestamp = dateTimestamp(station.updatedAt);
+  if (!timestamp) {
+    return {
+      level: 'incomplete',
+      label: 'Dato incompleto',
+      detail: missingFields.length ? `Manca: ${missingFields.join(', ')}` : 'Aggiornamento non disponibile',
+      ageDays: null,
+      missingFields,
+    };
+  }
+
+  const ageDays = Math.max(0, Math.round((Date.now() - timestamp) / 86400000));
+  let level = 'recent';
+  let label = 'Dato recente';
+  let detail = 'Aggiornato negli ultimi 90 giorni';
+
+  if (ageDays > 365) {
+    level = 'stale';
+    label = 'Dato vecchio';
+    detail = 'Aggiornato da oltre 1 anno';
+  } else if (ageDays > 90) {
+    level = 'verify';
+    label = 'Dato da verificare';
+    detail = 'Aggiornato da oltre 90 giorni';
+  }
+
+  if (missingFields.length >= 2) {
+    level = 'incomplete';
+    label = 'Dato incompleto';
+    detail = `Manca: ${missingFields.join(', ')}`;
+  }
+
+  return { level, label, detail, ageDays, missingFields };
+}
+
+function buildCostEstimate(price, estimateKwh) {
+  const kwh = Number(estimateKwh);
+  if (!price || !Number.isFinite(kwh) || kwh <= 0) return null;
+  if (price.unit !== 'EUR/kWh' || !Number.isFinite(price.min) || price.min <= 0) return null;
+
+  const fixedFee = Number.isFinite(price.fixedFee) ? price.fixedFee : 0;
+  const estimated = price.min * kwh + fixedFee;
+  return {
+    kwh,
+    amount: Number(estimated.toFixed(2)),
+    display: `${estimated.toFixed(2)} EUR per ${kwh.toFixed(kwh % 1 ? 1 : 0)} kWh`,
+    note: fixedFee > 0 ? 'Include eventuale costo fisso rilevato' : 'Stima sul solo prezzo energia',
+  };
+}
+
+function numericPrice(station) {
+  const n = Number(station?.price?.min);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function scaleScore(value, min, max, invert = false, fallback = 0.35) {
+  if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max)) return fallback;
+  if (max <= min) return 1;
+  const normalized = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  return invert ? 1 - normalized : normalized;
+}
+
+function applyRecommendationScores(results) {
+  const prices = results.map(numericPrice).filter((value) => Number.isFinite(value));
+  const distances = results.map((station) => Number(station.distanceKm)).filter((value) => Number.isFinite(value));
+  const powers = results.map((station) => Number(station.maxPowerKw || 0)).filter((value) => Number.isFinite(value));
+
+  const minPrice = prices.length ? Math.min(...prices) : null;
+  const maxPrice = prices.length ? Math.max(...prices) : null;
+  const minDistance = distances.length ? Math.min(...distances) : null;
+  const maxDistance = distances.length ? Math.max(...distances) : null;
+  const minPower = powers.length ? Math.min(...powers) : 0;
+  const maxPower = powers.length ? Math.max(...powers) : 300;
+
+  return results.map((station) => {
+    const price = numericPrice(station);
+    const confidenceMultiplier = station.price?.confidence === 'indicative'
+      ? 1
+      : station.price?.confidence === 'estimated'
+        ? 0.7
+        : station.price?.confidence === 'low'
+          ? 0.55
+          : 0.3;
+    const priceScore = scaleScore(price, minPrice, maxPrice, true, 0.25) * confidenceMultiplier;
+    const distanceScore = scaleScore(Number(station.distanceKm), minDistance, maxDistance, true, 0.5);
+    const powerScore = scaleScore(Number(station.maxPowerKw || 0), minPower, Math.max(maxPower || 0, 50), false, 0.35);
+    const freshnessScore = station.dataQuality?.level === 'recent'
+      ? 1
+      : station.dataQuality?.level === 'verify'
+        ? 0.7
+        : station.dataQuality?.level === 'stale'
+          ? 0.35
+          : 0.15;
+    const operationalScore = station.isOperational === true ? 1 : station.isOperational === false ? 0 : 0.45;
+
+    const score = (
+      priceScore * 0.32
+      + distanceScore * 0.24
+      + powerScore * 0.18
+      + freshnessScore * 0.14
+      + operationalScore * 0.12
+    ) * 100;
+
+    const reasons = [];
+    if (station.isOperational === true) reasons.push('operativa');
+    if (station.dataQuality?.level === 'recent') reasons.push('dato recente');
+    if (Number.isFinite(price)) reasons.push('prezzo confrontabile');
+    if (Number(station.maxPowerKw || 0) >= 150) reasons.push('alta potenza');
+    if (Number(station.distanceKm || 0) <= 5) reasons.push('vicina');
+
+    return {
+      ...station,
+      recommendationScore: Math.round(score),
+      recommendationReasons: reasons.slice(0, 3),
+    };
+  });
+}
+
 function parseUsageCostText(text) {
   const raw = String(text || '').trim();
   if (!raw) return [];
@@ -349,7 +520,7 @@ function buildMarketAverageCandidate(station) {
   };
 }
 
-function summarizePrice(candidates) {
+function summarizePrice(candidates, estimateKwh) {
   const eurPerKwh = candidates
     .map((x) => x.eurPerKwh)
     .filter((x) => Number.isFinite(x) && x > 0)
@@ -363,10 +534,11 @@ function summarizePrice(candidates) {
     const min = eurPerKwh[0];
     const max = eurPerKwh[eurPerKwh.length - 1];
     const bestCandidate = candidates.find((x) => Number.isFinite(x.eurPerKwh) && x.eurPerKwh === min);
-    return {
+    const price = {
       unit: 'EUR/kWh',
       min,
       max,
+      fixedFee: Number.isFinite(bestCandidate?.fixedFee) ? bestCandidate.fixedFee : null,
       display: min === max ? `${min.toFixed(2)} €/kWh` : `${min.toFixed(2)}-${max.toFixed(2)} €/kWh`,
       confidence: candidates.some((x) => x.confidence === 'matched-operator')
         ? 'indicative'
@@ -377,6 +549,8 @@ function summarizePrice(candidates) {
       source: bestCandidate?.source || null,
       updatedAt: bestCandidate?.updatedAt || null,
     };
+    price.estimate = buildCostEstimate(price, estimateKwh);
+    return price;
   }
 
   if (eurPerMinute.length) {
@@ -392,6 +566,7 @@ function summarizePrice(candidates) {
       label: bestCandidate?.label || null,
       source: bestCandidate?.source || null,
       updatedAt: bestCandidate?.updatedAt || null,
+      estimate: null,
     };
   }
 
@@ -403,6 +578,7 @@ function summarizePrice(candidates) {
       label: candidates[0].label || null,
       source: candidates[0].source || null,
       updatedAt: candidates[0].updatedAt || null,
+      estimate: null,
     };
   }
 
@@ -412,6 +588,7 @@ function summarizePrice(candidates) {
     max: null,
     display: 'Prezzo non disponibile via API pubblica',
     confidence: 'missing',
+    estimate: null,
   };
 }
 
@@ -465,20 +642,57 @@ function transformOcmStation(row, center, connectorFilters) {
     maxPowerKw: connections.reduce((max, connection) => Math.max(max, Number(connection.powerKw || 0)), 0) || null,
     connections,
     source: 'OpenChargeMap',
+    sourceUrl: row.ID ? `https://openchargemap.org/site/poi/details/${row.ID}` : null,
   };
 }
 
 function sortResults(results, sort) {
-  const mode = String(sort || 'price').toLowerCase();
-  const numericPrice = (station) => Number.isFinite(station.price?.min) ? station.price.min : Number.POSITIVE_INFINITY;
+  const mode = String(sort || 'recommended').toLowerCase();
+  const numericPriceForSort = (station) => Number.isFinite(station.price?.min) ? station.price.min : Number.POSITIVE_INFINITY;
+  const updatedTs = (station) => dateTimestamp(station.updatedAt);
+
   if (mode === 'distance') {
-    results.sort((a, b) => a.distanceKm - b.distanceKm || numericPrice(a) - numericPrice(b));
+    results.sort((a, b) => a.distanceKm - b.distanceKm || numericPriceForSort(a) - numericPriceForSort(b));
   } else if (mode === 'power') {
     results.sort((a, b) => (b.maxPowerKw || 0) - (a.maxPowerKw || 0) || a.distanceKm - b.distanceKm);
+  } else if (mode === 'freshness') {
+    results.sort((a, b) => updatedTs(b) - updatedTs(a) || a.distanceKm - b.distanceKm);
+  } else if (mode === 'price') {
+    results.sort((a, b) => numericPriceForSort(a) - numericPriceForSort(b) || a.distanceKm - b.distanceKm);
   } else {
-    results.sort((a, b) => numericPrice(a) - numericPrice(b) || a.distanceKm - b.distanceKm);
+    results.sort((a, b) => (b.recommendationScore || 0) - (a.recommendationScore || 0) || a.distanceKm - b.distanceKm);
   }
   return results;
+}
+
+function buildEvResults(ocmRows, center, filters, tariffRows, radiusKm, estimateKwh) {
+  const rows = ocmRows
+    .map((row) => transformOcmStation(row, center, filters.connectorFilters))
+    .filter(Boolean)
+    .map((station) => {
+      const stationWithOps = {
+        ...station,
+        isOperational: stationOperationalValue(station),
+      };
+      const dataQuality = buildDataQuality(stationWithOps);
+      return { ...stationWithOps, dataQuality };
+    })
+    .filter((station) => station.distanceKm <= radiusKm)
+    .filter((station) => !filters.operationalOnly || station.isOperational === true)
+    .filter((station) => stationMatchesPowerBands(station, filters.powerBands))
+    .map((station) => {
+      const tariffCandidates = [
+        ...buildTariffCandidates(station, tariffRows),
+        ...parseUsageCostText(station.usageCostText),
+      ];
+      if (!hasStructuredPrice(tariffCandidates)) {
+        tariffCandidates.push(buildMarketAverageCandidate(station));
+      }
+      const price = summarizePrice(tariffCandidates, estimateKwh);
+      return { ...station, price, tariffCandidates };
+    });
+
+  return applyRecommendationScores(rows);
 }
 
 export default async function handler(req, res) {
@@ -486,9 +700,12 @@ export default async function handler(req, res) {
     const q = String(req.query.q || req.query.cap || '').trim();
     const latParam = Number(req.query.lat);
     const lonParam = Number(req.query.lon);
-    const radiusKm = clampNumber(req.query.radius || req.query.raggio, 1, MAX_RADIUS_KM, 10);
-    const maxResults = clampNumber(req.query.maxResults, 1, MAX_RESULTS, 50);
+    const requestedRadiusKm = clampNumber(req.query.radius || req.query.raggio, 1, MAX_RADIUS_KM, 10);
+    const maxResults = clampNumber(req.query.maxResults, 1, MAX_RESULTS, 75);
     const connectorFilters = parseConnectorFilters(req.query.connectors || req.query.connector);
+    const powerBands = parseConnectorFilters(req.query.power || req.query.powerBands || req.query.power_band);
+    const operationalOnly = parseBooleanFlag(req.query.operational || req.query.onlyOperational || req.query.soloOperative);
+    const estimateKwh = clampNumber(req.query.kwh || req.query.estimateKwh, 5, 120, 30);
 
     let center;
     if (Number.isFinite(latParam) && Number.isFinite(lonParam)) {
@@ -498,36 +715,44 @@ export default async function handler(req, res) {
       center = await geocodePlace(q);
     }
 
-    const [ocmRows, tariffData] = await Promise.all([
-      fetchOpenChargeMap({ lat: center.lat, lon: center.lon, radiusKm, maxResults }),
-      loadTariffs(),
-    ]);
+    const tariffData = await loadTariffs();
+    const radiusPlan = buildRadiusSearchPlan(requestedRadiusKm);
+    let results = [];
+    let radiusKm = requestedRadiusKm;
+    let ocmRows = [];
 
-    const results = ocmRows
-      .map((row) => transformOcmStation(row, center, connectorFilters))
-      .filter(Boolean)
-      .map((station) => {
-        const tariffCandidates = [
-          ...buildTariffCandidates(station, tariffData.rows),
-          ...parseUsageCostText(station.usageCostText),
-        ];
-        if (!hasStructuredPrice(tariffCandidates)) {
-          tariffCandidates.push(buildMarketAverageCandidate(station));
-        }
-        const price = summarizePrice(tariffCandidates);
-        return { ...station, price, tariffCandidates };
-      })
-      .filter((station) => station.distanceKm <= radiusKm);
+    for (const radiusCandidate of radiusPlan) {
+      radiusKm = radiusCandidate;
+      ocmRows = await fetchOpenChargeMap({ lat: center.lat, lon: center.lon, radiusKm: radiusCandidate, maxResults });
+      results = buildEvResults(
+        ocmRows,
+        center,
+        { connectorFilters, powerBands, operationalOnly },
+        tariffData.rows,
+        radiusCandidate,
+        estimateKwh
+      );
+      if (results.length || radiusCandidate === radiusPlan[radiusPlan.length - 1]) break;
+    }
 
     sortResults(results, req.query.sort);
     const latestStationsUpdatedAt = latestDateValue(results.map((station) => station.updatedAt));
+    const autoExpanded = radiusKm > requestedRadiusKm;
 
     return json(res, 200, {
       ok: true,
       query: q || null,
       center,
       radiusKm,
+      requestedRadiusKm,
+      autoExpanded,
       connectors: [...connectorFilters],
+      filters: {
+        powerBands: [...powerBands],
+        operationalOnly,
+        estimateKwh,
+        sort: String(req.query.sort || 'recommended'),
+      },
       count: results.length,
       updatedAt: latestStationsUpdatedAt,
       sources: {
@@ -535,7 +760,7 @@ export default async function handler(req, res) {
         stationsUpdatedAt: latestStationsUpdatedAt,
         prices: [MARKET_AVERAGE_SOURCE, 'OpenChargeMap UsageCost', ...tariffData.sources],
       },
-      pricingNote: null,
+      pricingNote: 'Prezzi e disponibilita EV sono indicativi: verifica sempre in app o sul provider prima di avviare la ricarica.',
       results,
     });
   } catch (err) {
